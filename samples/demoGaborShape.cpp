@@ -10,8 +10,10 @@ using namespace cv;
 int main( int argc, char** argv )
 {
 	Mat src = imread(argv[1],0);
-	Mat dest = radonTransform(src);
-	Mat lbp = elbp(dest);
+	Mat gabor = magnitude(convolveDFT(src, gaborWavelet(2,3,6.28,25)));
+	Mat lbp = elbp(gabor);
+	//lbp.convertTo(lbp, CV_32F);
+	//Mat dest = radonTransform(lbp);
 	imshow("Janela", lbp*256);
 	waitKey(0);
 	

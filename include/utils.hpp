@@ -12,8 +12,9 @@ using namespace Eigen;
 using namespace cv;
 using namespace boost::filesystem;
 
-void loadImages(string, vector<string>&);
-float chiSquareDistance(Mat, Mat);
-void patcher(Mat, int, int, vector<vector<Mat> >&);
+void loadImages(string src, vector<string>& dest);
+void patcher(InputArray src, Size size, int delta, vector<vector<Mat> >& patches);
+void chiSquareDistance(InputArray a, InputArray b, double& dist);
+double chiSquareDistance(InputArray a, InputArray b);
 
 #endif

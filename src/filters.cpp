@@ -51,7 +51,8 @@ Mat gaborWavelet(int mu, int nu, double sigma, int scaleXY){
 		for(int y=-scaleXY; y<=scaleXY; y++){
 			double phi = angStep*mu;
 			double k = kmax/pow(f,nu);
-			G.at<complex< float >>(y+scaleXY,x+scaleXY) = pow(k,2)/pow(sigma,2)*exp(-pow(k,2)*(pow(x,2)+pow(y,2))/2/pow(sigma,2))*(exp(complex< double >(0,1)*(k*cos(phi)*x+k*sin(phi)*y)));
+			G.at<complex< float >>(y+scaleXY,x+scaleXY) = pow(k,2)/pow(sigma,2)*exp(-pow(k,2)*(pow(x,2)+pow(y,2))/2/pow(sigma,2))*
+			(exp(complex< double >(0,1)*(k*cos(phi)*x+k*sin(phi)*y)) - DC);
 		}
 	}
 	

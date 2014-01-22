@@ -26,8 +26,7 @@ inline void radonTransform_(InputArray _src, OutputArray _dst){
 	/// Rotate the warped image
 	warpAffine(src, rotate_dst, rot_mat, size);
 	
-	for(angle=0; angle<180; angle++)
-	{
+	for(angle=0; angle<180; angle++){
 		/// Get the rotation matrix with the specifications above
 		rot_mat = getRotationMatrix2D( center, 90-angle, scale );
 		rot_mat.at<double>(0,2) += (diag - src.cols)/2.0;
@@ -36,10 +35,11 @@ inline void radonTransform_(InputArray _src, OutputArray _dst){
 		/// Rotate the warped image
 		warpAffine(src, rotate_dst, rot_mat, size);
 		
-		for(int i=0; i<diag; i++)
+		for(int i=0; i<diag; i++){
 			for(int j=0; j<diag; j++){
 				dst.at<float>(diag-i,angle) += rotate_dst.at<_Tp>(i,j);
 			}
+		}
 	}
 	
 	normalize(dst, dst, 0, 1, NORM_MINMAX, CV_32FC1);

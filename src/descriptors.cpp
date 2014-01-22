@@ -24,7 +24,7 @@ int  UniformPattern59[256] = {
 // elbp
 //------------------------------------------------------------------------------
 template <typename _Tp> static
-inline void elbp_(InputArray _src, OutputArray _dst, int radius, int neighbors) {
+inline void elbp_(InputArray _src, OutputArray _dst, int radius, int neighbors){
 	//get matrices
 	Mat src = _src.getMat();
 	// allocate memory for result
@@ -32,7 +32,7 @@ inline void elbp_(InputArray _src, OutputArray _dst, int radius, int neighbors) 
 	Mat dst = _dst.getMat();
 	// zero
 	dst.setTo(0);
-	for(int n=0; n<neighbors; n++) {
+	for(int n=0; n<neighbors; n++){
 		// sample points
 		float x = static_cast<float>(-radius) * sin(2.0*CV_PI*n/static_cast<float>(neighbors));
 		float y = static_cast<float>(radius) * cos(2.0*CV_PI*n/static_cast<float>(neighbors));
@@ -50,8 +50,8 @@ inline void elbp_(InputArray _src, OutputArray _dst, int radius, int neighbors) 
 		float w3 = (1 - tx) *      ty;
 		float w4 =      tx  *      ty;
 		// iterate through your data
-		for(int i=radius; i < src.rows-radius;i++) {
-			for(int j=radius;j < src.cols-radius;j++) {
+		for(int i=radius; i < src.rows-radius;i++){
+			for(int j=radius;j < src.cols-radius;j++){
 				// calculate interpolated value
 				float t = w1*src.at<_Tp>(i+fy,j+fx) + w2*src.at<_Tp>(i+fy,j+cx) + w3*src.at<_Tp>(i+cy,j+fx) + w4*src.at<_Tp>(i+cy,j+cx);
 				// floating point precision, so check some machine-dependent epsilon
@@ -71,7 +71,7 @@ inline void calcLBPHistogram_(InputArray _src, OutputArray _dst){
 	Mat temp;
 	for(int k=1; k<8; k+=2){
 		temp = elbp(src,k,8);
-		for(int i = 0; i < temp.rows; i++) {
+		for(int i = 0; i < temp.rows; i++){
 			for(int j = 0; j < temp.cols; j++){
 				int bin = UniformPattern59[temp.at<int>(i,j)];
 				dst.at<float>(bin+((k-1)/2)*59) += 1;
@@ -91,16 +91,19 @@ inline void calcSIFTDescriptors_(InputArray _src, OutputArray _dst){
 	vl_dsift_set_window_size(dsift, src.cols/2.0);
 	
 	vector<float> img;
-	for(int i = 0; i < src.rows; ++i)
-		for(int j = 0; j < src.cols; ++j)
+	for(int i = 0; i < src.rows; ++i){
+		for(int j = 0; j < src.cols; ++j){
 			img.push_back(src.at<_Tp>(i, j));
-		
-		vl_dsift_process(dsift, &img[0]);
+		}
+	}
+	
+	vl_dsift_process(dsift, &img[0]);
 	
 	const float* temp =  vl_dsift_get_descriptors(dsift);
 	
-	for(int i=0; i<128; i++)
+	for(int i=0; i<128; i++){
 		dst.at<float>(i) = temp[i];
+	}	
 }
 
 

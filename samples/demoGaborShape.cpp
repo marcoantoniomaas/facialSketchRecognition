@@ -16,25 +16,29 @@ int histSize = 8;
 float range[] = {0, 1} ;
 const float* histRange = { range };
 
-Mat extractGaborShape(Mat img){
+Mat extractGaborShape(InputArray _img){
+	
+	Mat img = _img.getMat();
 	vector<vector<Mat> > mpatches, rpatches;
-	Mat temp;
+	int count = 0;
+	Mat hist, radon, gaborMag;
+	Mat temp = Mat::zeros(40*mhor*mver*nhor*nver*histSize, 1, CV_32F);
+	
 	for(int mu=0; mu<8; mu++){
 		for(int nu=0; nu<5; nu++){
-			Mat gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 21)));
+			gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 21)));
 			patcher(gaborMag, Size(gaborMag.cols/mhor, gaborMag.rows/mver), 0, mpatches);
 			for(uint mcol=0; mcol<mpatches.size(); mcol++){
-				for(uint mrow=0; mrow<mpatches[0].size(); mrow++){
-					Mat radon = radonTransform(mpatches[mcol][mrow]);
+				for(uint mrow=0; mrow<mpatches[mcol].size(); mrow++){
+					radon = radonTransform(mpatches[mcol][mrow]);
 					patcher(radon, Size(radon.cols/nhor, radon.rows/nver), 0, rpatches);
 					for(uint rcol=0; rcol<rpatches.size(); rcol++){
-						for(uint rrow=0; rrow<rpatches[0].size(); rrow++){
-							Mat hist;
+						for(uint rrow=0; rrow<rpatches[rcol].size(); rrow++){
 							calcHist(&rpatches[rcol][rrow], 1, 0, Mat(), hist, 1, &histSize, &histRange);
-							if(temp.empty())
-								temp = hist.clone();
-							else
-								vconcat(temp, hist, temp);
+							for(int pos=0; pos<histSize; pos++){
+								temp.at<float>(count*histSize+pos,1) = hist.at<float>(pos,1);
+							}
+							count++;
 						}
 					}
 					vector<vector<Mat> >().swap(rpatches);

@@ -37,7 +37,7 @@ inline void radonTransform_(InputArray _src, OutputArray _dst){
 		
 		for(int i=0; i<diag; i++){
 			for(int j=0; j<diag; j++){
-				dst.at<float>(diag-i,angle) += rotate_dst.at<_Tp>(i,j);
+				dst.at<float>(diag-i-1,angle) += rotate_dst.at<_Tp>(i,j);
 			}
 		}
 	}

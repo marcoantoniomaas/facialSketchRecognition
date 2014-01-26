@@ -36,18 +36,20 @@ Mat extractGaborShape(InputArray _img){
 						for(uint rrow=0; rrow<rpatches[rcol].size(); rrow++){
 							calcHist(&rpatches[rcol][rrow], 1, 0, Mat(), hist, 1, &histSize, &histRange);
 							for(int pos=0; pos<histSize; pos++){
-								temp.at<float>(count*histSize+pos,1) = hist.at<float>(pos,1);
+								temp.at<float>(count*histSize+pos) = hist.at<float>(pos);
 							}
 							count++;
 						}
 					}
+					rpatches.clear();
 					vector<vector<Mat> >().swap(rpatches);
 				}
 			}
+			mpatches.clear();
 			vector<vector<Mat> >().swap(mpatches);
 		}
 	}
-	return temp.clone();
+	return temp;
 }
 
 
@@ -56,14 +58,16 @@ int main( int argc, char** argv )
 	
 	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos;
 	
-	loadImages(argv[1], trainingPhotos);
-	loadImages(argv[2], trainingSketches);
+	loadImages(argv[3], trainingPhotos);
+	loadImages(argv[4], trainingSketches);
 	loadImages(argv[3], testingPhotos);
 	loadImages(argv[4], testingSketches);
 	loadImages(argv[5], extraPhotos);
 	
-	const uint nTraining = (const uint) trainingPhotos.size();
-	vector<Mat> trainingPhotosGaborShape(nTraining), trainingSketchesGaborShape(nTraining), testingPhotosGaborShape, testingSketchesGaborShape, extraPhotosGaborShape;
+	uint nTraining = (uint)trainingPhotos.size();
+	vector<Mat*> trainingPhotosGaborShape, trainingSketchesGaborShape, testingPhotosGaborShape, testingSketchesGaborShape, extraPhotosGaborShape;
+	trainingPhotosGaborShape.resize(nTraining);
+	trainingSketchesGaborShape.resize(nTraining);
 	
 	cout << trainingPhotos.size() << endl;
 	cout << trainingSketches.size() << endl;
@@ -73,30 +77,31 @@ int main( int argc, char** argv )
 	#pragma omp parallel for private(img)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingPhotos[i],0);;
-		cout << "trainingPhoto " << i << endl; 
-		trainingPhotosGaborShape[i] =  extractGaborShape(img);
+		cout << "trainingPhoto " << i << endl;
+		trainingPhotosGaborShape[i] = new Mat();
+		*(trainingPhotosGaborShape[i]) = extractGaborShape(img);
 	}
 	
 	#pragma omp parallel for private(img)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingSketches[i],0);;
-		cout << "trainingSketches " << i << endl; 
-		trainingSketchesGaborShape[i] =  extractGaborShape(img);
+		cout << "trainingSketches " << i << endl;
+		trainingSketchesGaborShape[i] = new Mat();
+		*(trainingSketchesGaborShape[i]) = extractGaborShape(img);
 	}
 	
 	int nTestingSketches = trainingSketchesGaborShape.size();
 	int nTestingPhotos = trainingPhotosGaborShape.size();
-	
-	vector<int> rank(nTestingSketches);
 	
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	FileStorage file("distances.xml", FileStorage::WRITE);
 	
+	#pragma omp parallel for
 	for(int i=0; i<nTestingSketches; i++){
 		for(int j=0; j<nTestingPhotos; j++){
-			distances.at<double>(i,j) = chiSquareDistance(trainingPhotosGaborShape[j],trainingSketchesGaborShape[i]);
+			distances.at<double>(i,j) = chiSquareDistance(*(trainingPhotosGaborShape[j]),*(trainingSketchesGaborShape[i]));
 		}
 	}
 	

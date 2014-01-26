@@ -32,9 +32,9 @@ void patcher(InputArray src, Size size, int delta, vector<vector<Mat> > &result)
 	int w = img.cols, h=img.rows, ww=size.width, hh=size.height;
 	vector<vector<Mat> >().swap(result);
 	
-	for(int i=0;i<w-ww;i+=(ww-delta)){
+	for(int i=0;i<=w-ww;i+=(ww-delta)){
 		vector<Mat> col;
-		for(int j=0;j<h-hh;j+=(hh-delta)){
+		for(int j=0;j<=h-hh;j+=(hh-delta)){
 			col.push_back(img(Rect(i,j,ww,hh)));
 		}
 		result.push_back(col);

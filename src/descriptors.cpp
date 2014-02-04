@@ -87,7 +87,7 @@ inline void calcSIFTDescriptors_(InputArray _src, OutputArray _dst){
 	Mat dst = _dst.getMat();
 	dst.setTo(0);
 	
-	VlDsiftFilter* dsift = vl_dsift_new_basic(src.cols, src.rows, src.cols, src.cols/4);
+	static VlDsiftFilter* dsift = vl_dsift_new_basic(src.cols, src.rows, src.cols, src.cols/4);
 	vl_dsift_set_window_size(dsift, src.cols/2.0);
 	
 	vector<float> img;
@@ -103,7 +103,8 @@ inline void calcSIFTDescriptors_(InputArray _src, OutputArray _dst){
 	
 	for(int i=0; i<128; i++){
 		dst.at<float>(i) = temp[i];
-	}	
+	}
+	
 }
 
 

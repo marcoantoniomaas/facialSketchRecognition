@@ -6,6 +6,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/contrib/contrib.hpp>
 #include <vl/dsift.h>
+#include <vl/generic.h>
 
 using namespace cv;
 //using namespace std;

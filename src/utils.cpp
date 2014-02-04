@@ -49,7 +49,7 @@ inline void chiSquareDistance_(InputArray _a, InputArray _b, double &dist){
 	Mat a = _a.getMat();
 	Mat b = _b.getMat();
 	
-	for (int i = 0; i < a.rows; i++){
+	for (int i = 0; i < a.total(); i++){
 		double temp = pow((a.at<_Tp>(i) - b.at<_Tp>(i)),2)/(a.at<_Tp>(i) + b.at<_Tp>(i));
 		if(temp==temp)
 			dist += temp;

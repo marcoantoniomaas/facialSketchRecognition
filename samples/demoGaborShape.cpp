@@ -16,17 +16,19 @@ int histSize = 8;
 float range[] = {0, 1} ;
 const float* histRange = { range };
 
+bool PCALDA = false;
+
 Mat extractGaborShape(InputArray _img){
 	
 	Mat img = _img.getMat();
 	vector<vector<Mat> > mpatches, rpatches;
 	int count = 0;
 	Mat hist, radon, gaborMag;
-	Mat temp = Mat::zeros(40*mhor*mver*nhor*nver*histSize, 1, CV_32F);
+	Mat temp = Mat::zeros(1, 40*mhor*mver*nhor*nver*histSize, CV_32F);
 	
 	for(int mu=0; mu<8; mu++){
 		for(int nu=0; nu<5; nu++){
-			gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 21)));
+			gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 0)));
 			patcher(gaborMag, Size(gaborMag.cols/mhor, gaborMag.rows/mver), 0, mpatches);
 			for(uint mcol=0; mcol<mpatches.size(); mcol++){
 				for(uint mrow=0; mrow<mpatches[mcol].size(); mrow++){
@@ -53,55 +55,132 @@ Mat extractGaborShape(InputArray _img){
 }
 
 
-int main( int argc, char** argv )
+int main(int argc, char** argv)
 {
 	
-	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos;
+	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos, vphotos, vsketches;
 	
-	loadImages(argv[3], trainingPhotos);
-	loadImages(argv[4], trainingSketches);
-	loadImages(argv[3], testingPhotos);
-	loadImages(argv[4], testingSketches);
-	loadImages(argv[5], extraPhotos);
+	loadImages(argv[1], vphotos);
+	loadImages(argv[2], vsketches);
+	//loadImages(argv[3], testingPhotos);
+	//loadImages(argv[4], testingSketches);
+	//loadImages(argv[5], extraPhotos);
+	
+	
+	if(PCALDA){
+		trainingPhotos.insert(trainingPhotos.end(),vphotos.begin(),vphotos.begin()+500);
+		trainingSketches.insert(trainingSketches.end(),vsketches.begin(),vsketches.begin()+500);
+		
+		if(trainingPhotos.size()!=trainingSketches.size()){
+			cerr << "Training photos and sketches sets has different sizes" << endl;
+			return -1;
+		}
+	}
+	
+	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.end());
+	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.end());
 	
 	uint nTraining = (uint)trainingPhotos.size();
-	vector<Mat*> trainingPhotosGaborShape, trainingSketchesGaborShape, testingPhotosGaborShape, testingSketchesGaborShape, extraPhotosGaborShape;
-	trainingPhotosGaborShape.resize(nTraining);
-	trainingSketchesGaborShape.resize(nTraining);
+	cout << "The size of training set is: " << nTraining << endl;
 	
-	cout << trainingPhotos.size() << endl;
-	cout << trainingSketches.size() << endl;
+	vector<Mat*> testingPhotosGaborShape, testingSketchesGaborShape, extraPhotosGaborShape;
 	
-	Mat img;
+	Mat trainingData(2*nTraining, 40*mhor*mver*nhor*nver*histSize, CV_32F);
+	vector<int> labels(2*nTraining);
 	
-	#pragma omp parallel for private(img)
-	for(uint i=0; i<nTraining; i++){
-		img = imread(trainingPhotos[i],0);;
-		cout << "trainingPhoto " << i << endl;
-		trainingPhotosGaborShape[i] = new Mat();
-		*(trainingPhotosGaborShape[i]) = extractGaborShape(img);
+	Mat img, xi, temp, mean, eigenvectors;
+	PCA pca;
+	LDA lda;
+	
+	if(PCALDA){
+		#pragma omp parallel for private(img, xi, temp)
+		for(uint i=0; i<nTraining; i++){
+			img = imread(trainingPhotos[i],0);
+			resize(img, img, Size(128,160));
+			cout << "trainingPhoto " << i << endl;
+			xi = trainingData.row(i);
+			temp = extractGaborShape(img);
+			temp.copyTo(xi);		
+			labels[i]=i;
+		}
+		
+		#pragma omp parallel for private(img, xi, temp)
+		for(uint i=0; i<nTraining; i++){
+			img = imread(trainingSketches[i],0);
+			resize(img, img, Size(128,160));
+			cout << "trainingSketches " << i << endl;
+			xi = trainingData.row(nTraining+i);
+			temp = extractGaborShape(img);
+			temp.copyTo(xi);
+			labels[nTraining+i]=i;
+		}
+		
+		cout << "Starting the training" << endl;
+		
+		int dim = 2*nTraining>800 ? 800 : 2*nTraining-10;
+		
+		pca(trainingData, Mat(), CV_PCA_DATA_AS_ROW, dim);
+		lda.compute(pca.project(trainingData), labels);
+		mean = pca.mean.reshape(1,1);
+		
+		lda.eigenvectors().convertTo(temp, CV_32F);
+		
+		gemm(pca.eigenvectors, temp, 1.0, Mat(), 0.0, eigenvectors, GEMM_1_T);
+		
+		cout << "Finish the training" << endl;
 	}
 	
-	#pragma omp parallel for private(img)
-	for(uint i=0; i<nTraining; i++){
-		img = imread(trainingSketches[i],0);;
-		cout << "trainingSketches " << i << endl;
-		trainingSketchesGaborShape[i] = new Mat();
-		*(trainingSketchesGaborShape[i]) = extractGaborShape(img);
+	uint nTestingSketches = testingSketches.size();
+	uint nTestingPhotos = testingPhotos.size() + extraPhotos.size();
+	
+	testingSketchesGaborShape.resize(nTestingSketches); 
+	testingPhotosGaborShape.resize(nTestingPhotos); 
+	
+	cout << "The number of subjects is: " << nTestingSketches << endl;
+	cout << "The number of photos in gallery is: "<< nTestingPhotos << endl;
+	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nTestingPhotos; i++){
+		img = imread(testingPhotos[i],0);
+		resize(img, img, Size(128,160));
+		cout << "testingPhotos " << i << endl;
+		testingPhotosGaborShape[i] = new Mat();
+		if(PCALDA){
+			temp = extractGaborShape(img);
+			gemm((temp-mean), eigenvectors, 1.0, Mat(), 0.0, temp);		}
+			else{
+				temp = extractGaborShape(img);
+			}
+			*(testingPhotosGaborShape[i]) = temp;
+			//cout << i<<" "<<*(testingPhotosGaborShape[i]) << endl;
 	}
 	
-	int nTestingSketches = trainingSketchesGaborShape.size();
-	int nTestingPhotos = trainingPhotosGaborShape.size();
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nTestingSketches; i++){
+		img = imread(testingSketches[i],0);
+		resize(img, img, Size(128,160));
+		cout << "testingSketches " << i << endl;
+		testingSketchesGaborShape[i] = new Mat();
+		if(PCALDA){
+			temp = extractGaborShape(img);
+			gemm((temp-mean), eigenvectors, 1.0, Mat(), 0.0, temp);
+		}
+		else{
+			temp = extractGaborShape(img);
+		}
+		*(testingSketchesGaborShape[i]) = temp;
+		//cout << i <<" "<<*(testingSketchesGaborShape[i]) << endl;
+	}
 	
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	FileStorage file("distances.xml", FileStorage::WRITE);
+	FileStorage file("gs-cufsf2.xml", FileStorage::WRITE);
 	
 	#pragma omp parallel for
-	for(int i=0; i<nTestingSketches; i++){
-		for(int j=0; j<nTestingPhotos; j++){
-			distances.at<double>(i,j) = chiSquareDistance(*(trainingPhotosGaborShape[j]),*(trainingSketchesGaborShape[i]));
+	for(uint i=0; i<nTestingSketches; i++){
+		for(uint j=0; j<nTestingPhotos; j++){
+			distances.at<double>(i,j) = chiSquareDistance(*(testingPhotosGaborShape[j]),*(testingSketchesGaborShape[i]));
 		}
 	}
 	

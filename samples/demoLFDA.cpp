@@ -44,16 +44,18 @@ int main(int argc, char** argv)
 	
 	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos, vphotos, vsketches;
 	
-	loadImages(argv[1], trainingPhotos);
-	loadImages(argv[2], trainingSketches);
-	loadImages(argv[3], testingPhotos);
-	loadImages(argv[4], testingSketches);
+	loadImages(argv[1], vphotos);
+	loadImages(argv[2], vsketches);
+	//loadImages(argv[3], testingPhotos);
+	//loadImages(argv[4], testingSketches);
 	//loadImages(argv[5], extraPhotos);
 	
-	//trainingPhotos.insert(trainingPhotos.end(),vphotos.begin(),vphotos.begin()+600);
-	//trainingSketches.insert(trainingSketches.end(),vsketches.begin(),vsketches.begin()+600);
-	//testingPhotos.insert(testingPhotos.end(),vphotos.begin()+108,vphotos.begin()+188);
-	//testingSketches.insert(testingSketches.end(),vsketches.begin()+108,vsketches.begin()+188);
+	trainingPhotos.insert(trainingPhotos.end(),vphotos.begin()+694,vphotos.begin()+1194);
+	trainingSketches.insert(trainingSketches.end(),vsketches.begin()+694,vsketches.begin()+1194);
+	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.begin()+694);
+	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.begin()+694);
+	
+	//testingPhotos.insert(testingPhotos.end(),extraPhotos.begin(),extraPhotos.begin()+10000);
 	
 	if(trainingPhotos.size()!=trainingSketches.size()){
 		cerr << "Training photos and sketches sets has different sizes" << endl;
@@ -61,12 +63,20 @@ int main(int argc, char** argv)
 	}
 	
 	uint nTraining = (uint)trainingPhotos.size();
+	uint nTestingSketches = testingSketches.size();
+	uint nTestingPhotos = testingPhotos.size();
+	
+	cout << nTraining << " pairs to training." << endl;
+	cout << nTestingSketches << " sketches to verify." << endl;
+	cout << nTestingPhotos << " photos on the gallery" << endl;
+	
 	
 	//training
 	Mat img, temp;
-	int size=32, delta=16;
+	int size=16, delta=8;
 	
 	img = imread(trainingSketches[0],0);
+	//resize(img, img, Size(64,80));
 	temp = extractDescriptors(img, size, delta);
 	
 	int n = (img.cols-size)/delta+1, m=(img.rows-size)/delta+1;
@@ -80,6 +90,7 @@ int main(int argc, char** argv)
 	//#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingSketches[i],0);
+		//resize(img, img, Size(64,80));
 		//#pragma omp critical
 		temp = extractDescriptors(img, size, delta);
 		temp.copyTo(Xs.col(i));
@@ -90,6 +101,7 @@ int main(int argc, char** argv)
 	//#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingPhotos[i],0);
+		//resize(img, img, Size(64,80));
 		//#pragma omp critical
 		temp = extractDescriptors(img, size, delta);
 		temp.copyTo(Xp.col(i));
@@ -168,20 +180,19 @@ int main(int argc, char** argv)
 	
 	
 	//testing
-	uint nTestingSketches = testingSketches.size();
-	uint nTestingPhotos = testingPhotos.size() + extraPhotos.size();
 	
 	vector<Mat*> testingSketchesDescriptors(nTestingSketches), testingPhotosDescriptors(nTestingPhotos);
 	
 	for(uint i=0; i<nTestingSketches; i++){
 		Mat desc(1, n*99, CV_32F);
 		img = imread(testingSketches[i],0);
+		//resize(img, img, Size(64,80));
 		testingSketchesDescriptors[i] = new Mat();
 		temp = extractDescriptors(img, size, delta);
 		
 		for(int i=0; i<n; i++){
 			Mat aux = ((*(projectionMatrix[i])).t()*temp(Range(i*m*364,(i+1)*m*364), Range::all())).t();
-			normalize(aux,aux,1);
+			//normalize(aux,aux,1,0, NORM_MINMAX);
 			aux.copyTo(desc(Range::all(), Range(i*99,(i+1)*99)));
 		}
 		
@@ -194,12 +205,13 @@ int main(int argc, char** argv)
 	for(uint i=0; i<nTestingPhotos; i++){
 		Mat desc(1, n*99, CV_32F);
 		img = imread(testingPhotos[i],0);
+		//resize(img, img, Size(64,80));
 		testingPhotosDescriptors[i] = new Mat();
 		temp = extractDescriptors(img, size, delta);
 		
 		for(int i=0; i<n; i++){
 			Mat aux = ((*(projectionMatrix[i])).t()*temp(Range(i*m*364,(i+1)*m*364), Range::all())).t();
-			normalize(aux,aux,1);
+			//normalize(aux,aux,1,0, NORM_MINMAX);
 			aux.copyTo(desc(Range::all(), Range(i*99,(i+1)*99)));
 		}
 		
@@ -212,7 +224,7 @@ int main(int argc, char** argv)
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	FileStorage file("lfda1194xforensic2.xml", FileStorage::WRITE);
+	FileStorage file("lfda-500cufsf694-final16.xml", FileStorage::WRITE);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){

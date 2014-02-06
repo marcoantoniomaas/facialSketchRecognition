@@ -28,7 +28,7 @@ Mat extractGaborShape(InputArray _img){
 	
 	for(int mu=0; mu<8; mu++){
 		for(int nu=0; nu<5; nu++){
-			gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 0)));
+			gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 21)));
 			patcher(gaborMag, Size(gaborMag.cols/mhor, gaborMag.rows/mver), 0, mpatches);
 			for(uint mcol=0; mcol<mpatches.size(); mcol++){
 				for(uint mrow=0; mrow<mpatches[mcol].size(); mrow++){
@@ -175,7 +175,7 @@ int main(int argc, char** argv)
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	FileStorage file("gs-cufsf2.xml", FileStorage::WRITE);
+	FileStorage file("gs-newscufsf21.xml", FileStorage::WRITE);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){

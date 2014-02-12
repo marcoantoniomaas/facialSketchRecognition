@@ -23,17 +23,41 @@ int main(int argc, char** argv)
 	for(int i=0; i<distances.rows; i++){
 		rank[i] = 1;
 		for(int j=0; j<distances.cols; j++){
+			if(distances.at<double>(i,j)<=distances.at<double>(i,i) && i!=j){
+				rank[i]++;
+			}
+			
+		}
+		cout << i+1 << ": " << rank[i] << endl;
+	}
+	
+	for(int i=0; i<distances.cols; i++) {
+		Mat xi = distances.col(i);
+		// mean and standard deviation
+		//Scalar cvMean;
+		//Scalar cvStddev;
+		//meanStdDev(c_i, cvMean, cvStddev);
+		//c_i = (c_i-cvMean);
+		//c_i = c_i.mul(Mat::ones(c_i.size(), c_i.type()),1/cvStddev[0]);
+		normalize(xi, xi, 1, 0, NORM_MINMAX);
+	}
+	// mean and standard deviation
+	//Scalar cvMean;
+	//Scalar cvStddev;
+	//meanStdDev(distances, cvMean, cvStddev);
+	
+	//distances = (distances-cvMean);
+	//distances = distances.mul(Mat::ones(distances.size(), distances.type()),1/cvStddev[0]);
+	
+	for(int i=0; i<distances.rows; i++){
+		for(int j=0; j<distances.cols; j++){
 			if(i==j){
 				realPairs.insert(distances.at<double>(i,j));
 			}
 			else{
 				impostors.insert(distances.at<double>(i,j));
-				if(distances.at<double>(i,j)<=distances.at<double>(i,i)){
-					rank[i]++;
-				}
 			}
 		}
-		cout << i+1 << ": " << rank[i] << endl;
 	}
 	
 	cout << "The number of subject is: " << distances.rows << endl; 
@@ -57,7 +81,6 @@ int main(int argc, char** argv)
 		cout << "VR at FAR " << far*100 << "%:\t" << (float)count_if(realPairs.begin(), realPairs.end(), [threshold](double x) 
 		{return x <= threshold;})/distances.rows*100 << "%" << endl;
 	}
-
 	
 	return 0;
 }

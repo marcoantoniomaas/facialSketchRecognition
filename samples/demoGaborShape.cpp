@@ -16,7 +16,7 @@ int histSize = 8;
 float range[] = {0, 1} ;
 const float* histRange = { range };
 
-bool PCALDA = false;
+bool PCALDA = true;
 
 Mat extractGaborShape(InputArray _img){
 	
@@ -28,7 +28,7 @@ Mat extractGaborShape(InputArray _img){
 	
 	for(int mu=0; mu<8; mu++){
 		for(int nu=0; nu<5; nu++){
-			gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 21)));
+			gaborMag = magnitude(convolveDFT(img, gaborWavelet(mu, nu, 2*CV_PI, 0)));
 			patcher(gaborMag, Size(gaborMag.cols/mhor, gaborMag.rows/mver), 0, mpatches);
 			for(uint mcol=0; mcol<mpatches.size(); mcol++){
 				for(uint mrow=0; mrow<mpatches[mcol].size(); mrow++){
@@ -68,8 +68,8 @@ int main(int argc, char** argv)
 	
 	
 	if(PCALDA){
-		trainingPhotos.insert(trainingPhotos.end(),vphotos.begin(),vphotos.begin()+500);
-		trainingSketches.insert(trainingSketches.end(),vsketches.begin(),vsketches.begin()+500);
+		trainingPhotos.insert(trainingPhotos.end(),vphotos.begin()+694,vphotos.begin()+1194);
+		trainingSketches.insert(trainingSketches.end(),vsketches.begin()+694,vsketches.begin()+1194);
 		
 		if(trainingPhotos.size()!=trainingSketches.size()){
 			cerr << "Training photos and sketches sets has different sizes" << endl;
@@ -77,8 +77,8 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.end());
-	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.end());
+	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.begin()+694);
+	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.begin()+694);
 	
 	uint nTraining = (uint)trainingPhotos.size();
 	cout << "The size of training set is: " << nTraining << endl;
@@ -100,6 +100,7 @@ int main(int argc, char** argv)
 			cout << "trainingPhoto " << i << endl;
 			xi = trainingData.row(i);
 			temp = extractGaborShape(img);
+			normalize(temp, temp, 1, 0, NORM_MINMAX);
 			temp.copyTo(xi);		
 			labels[i]=i;
 		}
@@ -111,27 +112,48 @@ int main(int argc, char** argv)
 			cout << "trainingSketches " << i << endl;
 			xi = trainingData.row(nTraining+i);
 			temp = extractGaborShape(img);
+			normalize(temp, temp, 1, 0, NORM_MINMAX);
 			temp.copyTo(xi);
 			labels[nTraining+i]=i;
 		}
 		
+		mean = Mat::zeros(1, trainingData.cols, CV_32F);
+		
+		// calculate sums
+		for (int i = 0; i < trainingData.rows; i++) {
+			Mat instance = trainingData.row(i);
+			add(mean, instance, mean);
+		}
+		
+		// calculate total mean
+		mean.convertTo(mean, CV_32F, 1.0/static_cast<double>(trainingData.rows));
+		
+		// subtract the mean of matrix
+		for(int i=0; i<trainingData.rows; i++) {
+			Mat r_i = trainingData.row(i);
+			subtract(r_i, mean.reshape(1,1), r_i);
+		}
+		
 		cout << "Starting the training" << endl;
 		
-		int dim = 2*nTraining>800 ? 800 : 2*nTraining-10;
+		int dim = 700;
 		
 		pca(trainingData, Mat(), CV_PCA_DATA_AS_ROW, dim);
-		lda.compute(pca.project(trainingData), labels);
-		mean = pca.mean.reshape(1,1);
 		
-		lda.eigenvectors().convertTo(temp, CV_32F);
+		Mat trainingDataPCA = pca.project(trainingData);
 		
-		gemm(pca.eigenvectors, temp, 1.0, Mat(), 0.0, eigenvectors, GEMM_1_T);
+		lda.compute(trainingDataPCA, labels);
+		
+		Mat ldaEigenvectors;
+		lda.eigenvectors().convertTo(ldaEigenvectors, CV_32F);
+		
+		gemm(pca.eigenvectors, ldaEigenvectors, 1.0, Mat(), 0.0, eigenvectors, GEMM_1_T);
 		
 		cout << "Finish the training" << endl;
 	}
 	
 	uint nTestingSketches = testingSketches.size();
-	uint nTestingPhotos = testingPhotos.size() + extraPhotos.size();
+	uint nTestingPhotos = testingPhotos.size();
 	
 	testingSketchesGaborShape.resize(nTestingSketches); 
 	testingPhotosGaborShape.resize(nTestingPhotos); 
@@ -147,12 +169,15 @@ int main(int argc, char** argv)
 		testingPhotosGaborShape[i] = new Mat();
 		if(PCALDA){
 			temp = extractGaborShape(img);
-			gemm((temp-mean), eigenvectors, 1.0, Mat(), 0.0, temp);		}
-			else{
-				temp = extractGaborShape(img);
-			}
-			*(testingPhotosGaborShape[i]) = temp;
-			//cout << i<<" "<<*(testingPhotosGaborShape[i]) << endl;
+			normalize(temp, temp, 1, 0, NORM_MINMAX);
+			gemm((temp-mean),eigenvectors, 1.0, Mat(), 0.0, temp);
+		}
+		else{
+			temp = extractGaborShape(img);
+		}
+		//normalize(temp, temp, 1, 0, NORM_MINMAX);
+		*(testingPhotosGaborShape[i]) = temp;
+		//cout << i<<" "<<*(testingPhotosGaborShape[i]) << endl;
 	}
 	
 	#pragma omp parallel for private(img, temp)
@@ -163,24 +188,31 @@ int main(int argc, char** argv)
 		testingSketchesGaborShape[i] = new Mat();
 		if(PCALDA){
 			temp = extractGaborShape(img);
-			gemm((temp-mean), eigenvectors, 1.0, Mat(), 0.0, temp);
+			normalize(temp, temp, 1, 0, NORM_MINMAX);
+			gemm((temp-mean),eigenvectors, 1.0, Mat(), 0.0, temp);
 		}
 		else{
 			temp = extractGaborShape(img);
 		}
+		//normalize(temp, temp, 1, 0, NORM_MINMAX);
 		*(testingSketchesGaborShape[i]) = temp;
 		//cout << i <<" "<<*(testingSketchesGaborShape[i]) << endl;
+	}
+	
+	for(uint i=0; i<nTestingSketches; i++){
+		cout <<*(testingPhotosGaborShape[i]) << endl;
+		cout <<*(testingSketchesGaborShape[i]) << endl;
 	}
 	
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	FileStorage file("gs-newscufsf21.xml", FileStorage::WRITE);
+	FileStorage file("gs-cufsf-lda.xml", FileStorage::WRITE);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){
 		for(uint j=0; j<nTestingPhotos; j++){
-			distances.at<double>(i,j) = chiSquareDistance(*(testingPhotosGaborShape[j]),*(testingSketchesGaborShape[i]));
+			distances.at<double>(i,j) = norm(*(testingPhotosGaborShape[j]),*(testingSketchesGaborShape[i]));//chiSquareDistance();
 		}
 	}
 	

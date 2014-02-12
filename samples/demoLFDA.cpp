@@ -87,22 +87,22 @@ int main(int argc, char** argv)
 	
 	PCA pca;
 	
-	//#pragma omp parallel for private(img, temp)
+	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingSketches[i],0);
 		//resize(img, img, Size(64,80));
-		//#pragma omp critical
+		#pragma omp critical
 		temp = extractDescriptors(img, size, delta);
 		temp.copyTo(Xs.col(i));
 		temp.copyTo(X.col(i));
 		cout << "trainingSketches " << i << endl;
 	}
 	
-	//#pragma omp parallel for private(img, temp)
+	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingPhotos[i],0);
 		//resize(img, img, Size(64,80));
-		//#pragma omp critical
+		#pragma omp critical
 		temp = extractDescriptors(img, size, delta);
 		temp.copyTo(Xp.col(i));
 		temp.copyTo(X.col(i+nTraining));

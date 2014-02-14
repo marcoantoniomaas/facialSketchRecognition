@@ -63,7 +63,7 @@ inline void elbp_(InputArray _src, OutputArray _dst, int radius, int neighbors){
 
 
 template <typename _Tp> static
-inline void calcLBPHistogram_(InputArray _src, OutputArray _dst){
+inline void extractMLBP_(InputArray _src, OutputArray _dst){
 	Mat src = _src.getMat();
 	_dst.create(1, 59*4, CV_32FC1);
 	Mat dst = _dst.getMat();
@@ -81,7 +81,7 @@ inline void calcLBPHistogram_(InputArray _src, OutputArray _dst){
 }
 
 template <typename _Tp> static
-inline void calcSIFTDescriptors_(InputArray _src, OutputArray _dst){
+inline void extractSIFT_(InputArray _src, OutputArray _dst){
 	Mat src = _src.getMat();
 	_dst.create(1, 128, CV_32FC1);
 	Mat dst = _dst.getMat();
@@ -107,7 +107,91 @@ inline void calcSIFTDescriptors_(InputArray _src, OutputArray _dst){
 	
 }
 
+template <typename _Tp> static
+inline void extractHOG_(InputArray _src, OutputArray _dst){
+	Mat src = _src.getMat();
+	_dst.create(1, 9, CV_32FC1);
+	Mat dst = _dst.getMat();
+	dst.setTo(0);
 
+	Mat grad_x, grad_y, magn, theta;
+	
+	Sobel(src, grad_x, CV_32F, 1, 0);
+	Sobel(src, grad_y, CV_32F, 0, 1);
+	
+	magn = Mat::zeros(src.size(), CV_32F);
+	theta = Mat::zeros(src.size(), CV_32F);
+	
+	for(int x=0; x<src.rows; x++){
+		for(int y=0; y<src.cols; y++){
+			magn.at<float>(x,y) = sqrt(pow(grad_x.at<float>(x,y),2)+pow(grad_y.at<float>(x,y),2));
+			theta.at<float>(x,y) = atan2(grad_y.at<float>(x,y),grad_x.at<float>(x,y))* 180 / CV_PI;;
+		}
+	}
+	
+	for(int x=0; x<src.rows; x++){
+		for(int y=0; y<src.cols; y++){
+			int index = ceil((theta.at<float>(x,y)+180)/40)-1;
+			dst.at<float>(index)+=magn.at<float>(x,y);
+		}
+	}
+}
+
+template <typename _Tp> static
+inline void extractHAOG_(InputArray _src, OutputArray _dst){
+		Mat src = _src.getMat();
+	_dst.create(1, 9, CV_32FC1);
+	Mat dst = _dst.getMat();
+	dst.setTo(0);
+
+	Mat grad_x, grad_y, magn, theta;
+	
+	Sobel(src, grad_x, CV_32F, 1, 0);
+	Sobel(src, grad_y, CV_32F, 0, 1);
+	
+	magn = Mat::zeros(src.size(), CV_32F);
+	theta = Mat::zeros(src.size(), CV_32F);
+	
+	for(int x=0; x<src.rows; x++){
+		for(int y=0; y<src.cols; y++){
+			magn.at<float>(x,y) = sqrt(pow(grad_x.at<float>(x,y),2)+pow(grad_y.at<float>(x,y),2));
+		}
+	}
+	
+	Mat grad_sx = Mat::zeros(src.size(), CV_32F), 
+	grad_sy = Mat::zeros(src.size(), CV_32F),
+	magn_sq = Mat::zeros(src.size(), CV_32F);
+	
+	
+	for(int x=0; x<src.rows; x++){
+		for(int y=0; y<src.cols; y++){
+			int x0 = x-1>=0? x-1: 0;
+			int x1 = x+1< src.rows ? x+1: src.rows-1;
+			int y0 = y-1>=0? y-1: 0;
+			int y1 = y+1< src.cols ? y+1: src.cols-1;
+			for(int i=x0; i<=x1; i++){
+				for(int j=y0; j<y1; j++){
+					grad_sx.at<float>(x,y)+= pow(grad_x.at<float>(i,j),2)-pow(grad_y.at<float>(i,j),2);
+					grad_sy.at<float>(x,y)+= 2*grad_x.at<float>(i,j)*grad_y.at<float>(i,j);
+					magn_sq.at<float>(x,y)+= pow(magn.at<float>(i,j),2);
+				}
+			}
+		}
+	}
+	
+	for(int x=0; x<src.rows; x++){
+		for(int y=0; y<src.cols; y++){
+			theta.at<float>(x,y) = atan2(grad_sy.at<float>(x,y),grad_sx.at<float>(x,y))* 180 / CV_PI;
+		}
+	}
+	
+	for(int x=0; x<src.rows; x++){
+		for(int y=0; y<src.cols; y++){
+			int index = ceil((theta.at<float>(x,y)+180)/40)-1;
+			dst.at<float>(index)+=magn_sq.at<float>(x,y);
+		}
+	}
+}
 
 void elbp(InputArray src, OutputArray dst, int radius, int neighbors) {
 	switch (src.type()) {
@@ -122,28 +206,54 @@ void elbp(InputArray src, OutputArray dst, int radius, int neighbors) {
 	}
 }
 
-void calcLBPHistogram(InputArray src, OutputArray dst) {
+void extractMLBP(InputArray src, OutputArray dst) {
 	switch (src.type()) {
-		case CV_8SC1:   calcLBPHistogram_<char>(src,dst); break;
-		case CV_8UC1:   calcLBPHistogram_<unsigned char>(src, dst); break;
-		case CV_16SC1:  calcLBPHistogram_<short>(src,dst); break;
-		case CV_16UC1:  calcLBPHistogram_<unsigned short>(src,dst); break;
-		case CV_32SC1:  calcLBPHistogram_<int>(src,dst); break;
-		case CV_32FC1:  calcLBPHistogram_<float>(src,dst); break;
-		case CV_64FC1:  calcLBPHistogram_<double>(src,dst); break;
+		case CV_8SC1:   extractMLBP_<char>(src,dst); break;
+		case CV_8UC1:   extractMLBP_<unsigned char>(src, dst); break;
+		case CV_16SC1:  extractMLBP_<short>(src,dst); break;
+		case CV_16UC1:  extractMLBP_<unsigned short>(src,dst); break;
+		case CV_32SC1:  extractMLBP_<int>(src,dst); break;
+		case CV_32FC1:  extractMLBP_<float>(src,dst); break;
+		case CV_64FC1:  extractMLBP_<double>(src,dst); break;
 		default: break;
 	}
 }
 
-void calcSIFTDescriptors(InputArray src, OutputArray dst) {
+void extractSIFT(InputArray src, OutputArray dst) {
 	switch (src.type()) {
-		case CV_8SC1:   calcSIFTDescriptors_<char>(src,dst); break;
-		case CV_8UC1:   calcSIFTDescriptors_<unsigned char>(src, dst); break;
-		case CV_16SC1:  calcSIFTDescriptors_<short>(src,dst); break;
-		case CV_16UC1:  calcSIFTDescriptors_<unsigned short>(src,dst); break;
-		case CV_32SC1:  calcSIFTDescriptors_<int>(src,dst); break;
-		case CV_32FC1:  calcSIFTDescriptors_<float>(src,dst); break;
-		case CV_64FC1:  calcSIFTDescriptors_<double>(src,dst); break;
+		case CV_8SC1:   extractSIFT_<char>(src,dst); break;
+		case CV_8UC1:   extractSIFT_<unsigned char>(src, dst); break;
+		case CV_16SC1:  extractSIFT_<short>(src,dst); break;
+		case CV_16UC1:  extractSIFT_<unsigned short>(src,dst); break;
+		case CV_32SC1:  extractSIFT_<int>(src,dst); break;
+		case CV_32FC1:  extractSIFT_<float>(src,dst); break;
+		case CV_64FC1:  extractSIFT_<double>(src,dst); break;
+		default: break;
+	}
+}
+
+void extractHOG(InputArray src, OutputArray dst) {
+	switch (src.type()) {
+		case CV_8SC1:   extractHOG_<char>(src,dst); break;
+		case CV_8UC1:   extractHOG_<unsigned char>(src, dst); break;
+		case CV_16SC1:  extractHOG_<short>(src,dst); break;
+		case CV_16UC1:  extractHOG_<unsigned short>(src,dst); break;
+		case CV_32SC1:  extractHOG_<int>(src,dst); break;
+		case CV_32FC1:  extractHOG_<float>(src,dst); break;
+		case CV_64FC1:  extractHOG_<double>(src,dst); break;
+		default: break;
+	}
+}
+
+void extractHAOG(InputArray src, OutputArray dst) {
+	switch (src.type()) {
+		case CV_8SC1:   extractHAOG_<char>(src,dst); break;
+		case CV_8UC1:   extractHAOG_<unsigned char>(src, dst); break;
+		case CV_16SC1:  extractHAOG_<short>(src,dst); break;
+		case CV_16UC1:  extractHAOG_<unsigned short>(src,dst); break;
+		case CV_32SC1:  extractHAOG_<int>(src,dst); break;
+		case CV_32FC1:  extractHAOG_<float>(src,dst); break;
+		case CV_64FC1:  extractHAOG_<double>(src,dst); break;
 		default: break;
 	}
 }
@@ -159,14 +269,26 @@ Mat elbp(InputArray src, int radius, int neighbors) {
 	return dst;
 }
 
-Mat calcLBPHistogram(InputArray src) {
+Mat extractMLBP(InputArray src) {
 	Mat dst;
-	calcLBPHistogram(src, dst);
+	extractMLBP(src, dst);
 	return dst;
 }
 
-Mat calcSIFTDescriptors(InputArray src) {
+Mat extractSIFT(InputArray src) {
 	Mat dst;
-	calcSIFTDescriptors(src, dst);
+	extractSIFT(src, dst);
+	return dst;
+}
+
+Mat extractHOG(InputArray src){
+	Mat dst;
+	extractHOG(src, dst);
+	return dst;
+}
+
+Mat extractHAOG(InputArray src){
+	Mat dst;
+	extractHAOG(src, dst);
 	return dst;
 }

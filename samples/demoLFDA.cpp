@@ -19,14 +19,14 @@ Mat extractDescriptors(InputArray src, int size, int delta){
 	for(int i=0;i<=w-size;i+=(size-delta)){
 		for(int j=0; j<=h-size; j+=(size-delta)){
 			temp = img(Rect(i,j,size,size));
-			calcSIFTDescriptors(temp,a);
+			extractSIFT(temp,a);
 			normalize(a,a,1);
 			for(uint pos=0; pos<a.total(); pos++){
 				result.at<float>(point+pos) = a.at<float>(pos);
 			}
 			point+=a.total();
 			
-			calcLBPHistogram(temp,b);
+			extractMLBP(temp,b);
 			normalize(b,b,1);
 			
 			for(uint pos=0; pos<b.total(); pos++){

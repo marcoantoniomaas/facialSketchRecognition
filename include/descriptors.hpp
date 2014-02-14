@@ -13,9 +13,13 @@ using namespace cv;
 
 void elbp(InputArray src, OutputArray dst, int radius=1, int neighbors=8);
 Mat elbp(InputArray src, int radius=1, int neighbors=8);
-void calcLBPHistogram(InputArray src, OutputArray dst);
-Mat calcLBPHistogram(InputArray src);
-void calcSIFTDescriptors(InputArray src, OutputArray dst);
-Mat calcSIFTDescriptors(InputArray src);
+void extractMLBP(InputArray src, OutputArray dst);
+Mat extractMLBP(InputArray src);
+void extractSIFT(InputArray src, OutputArray dst);
+Mat extractSIFT(InputArray src);
+void extractHOG(InputArray src, OutputArray dst);
+Mat extractHOG(InputArray src);
+void extractHAOG(InputArray src, OutputArray dst);
+Mat extractHAOG(InputArray src);
 
 #endif

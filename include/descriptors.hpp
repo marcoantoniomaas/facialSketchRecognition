@@ -7,6 +7,7 @@
 #include <opencv2/contrib/contrib.hpp>
 #include <vl/dsift.h>
 #include <vl/generic.h>
+#include "transforms.hpp"
 
 using namespace cv;
 //using namespace std;
@@ -21,5 +22,7 @@ void extractHOG(InputArray src, OutputArray dst);
 Mat extractHOG(InputArray src);
 void extractHAOG(InputArray src, OutputArray dst);
 Mat extractHAOG(InputArray src);
+void extractLRBP(InputArray src, OutputArray dst);
+Mat extractLRBP(InputArray src);
 
 #endif

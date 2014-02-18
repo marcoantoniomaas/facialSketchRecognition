@@ -1,5 +1,6 @@
 #include <iostream>
 #include <opencv2/highgui/highgui.hpp>
+#include <algorithm>
 #include "descriptors.hpp"
 #include "utils.hpp"
 
@@ -13,12 +14,15 @@ Mat extractDescriptors(InputArray src, int size, int delta){
 	int n = (w-size)/delta+1, m=(h-size)/delta+1;
 	int point = 0;
 	
+	vector<vector<Mat> > patches;
+	patcher(img, Size(size,size), delta, patches);
+	
 	Mat result = Mat::zeros(m*n*364, 1, CV_32F);
 	Mat a, b, temp;
 	
-	for(int i=0;i<=w-size;i+=(size-delta)){
-		for(int j=0; j<=h-size; j+=(size-delta)){
-			temp = img(Rect(i,j,size,size));
+	for(uint i=0; i<patches.size(); i++){
+		for(uint j=0; j<patches[0].size(); j++){
+			temp = patches[i][j];
 			extractSIFT(temp,a);
 			normalize(a,a,1);
 			for(uint pos=0; pos<a.total(); pos++){
@@ -49,6 +53,13 @@ int main(int argc, char** argv)
 	//loadImages(argv[3], testingPhotos);
 	//loadImages(argv[4], testingSketches);
 	//loadImages(argv[5], extraPhotos);
+	
+	auto seed = unsigned (time(0));
+	
+	srand (seed);
+	random_shuffle (vsketches.begin(), vsketches.end());
+	srand (seed);
+	random_shuffle (vphotos.begin(), vphotos.end());
 	
 	trainingPhotos.insert(trainingPhotos.end(),vphotos.begin()+694,vphotos.begin()+1194);
 	trainingSketches.insert(trainingSketches.end(),vsketches.begin()+694,vsketches.begin()+1194);
@@ -91,8 +102,10 @@ int main(int argc, char** argv)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingSketches[i],0);
 		//resize(img, img, Size(64,80));
+		
 		#pragma omp critical
 		temp = extractDescriptors(img, size, delta);
+		
 		temp.copyTo(Xs.col(i));
 		temp.copyTo(X.col(i));
 		cout << "trainingSketches " << i << endl;
@@ -102,8 +115,10 @@ int main(int argc, char** argv)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingPhotos[i],0);
 		//resize(img, img, Size(64,80));
+		
 		#pragma omp critical
 		temp = extractDescriptors(img, size, delta);
+		
 		temp.copyTo(Xp.col(i));
 		temp.copyTo(X.col(i+nTraining));
 		cout << "trainingPhoto " << i << endl;
@@ -135,7 +150,7 @@ int main(int argc, char** argv)
 	// subtract the mean of matrix
 	for(int i=0; i<Xs.cols; i++) {
 		Mat c_i = Xs.col(i);
-		subtract(c_i, meanXp.reshape(1,dim), c_i);
+		subtract(c_i, meanXs.reshape(1,dim), c_i);
 	}
 	
 	for(int i=0; i<Xp.cols; i++) {
@@ -145,11 +160,11 @@ int main(int argc, char** argv)
 	
 	for(int i=0; i<X.cols; i++) {
 		Mat c_i = X.col(i);
-		subtract(c_i, meanXp.reshape(1,dim), c_i);
+		subtract(c_i, meanX.reshape(1,dim), c_i);
 	}
 	
 	for(int i=0; i<n; i++){
-		Range slice = Range(i*m*364, (i+1)*m*364);
+		Range slice = Range(i*m*364,(i+1)*m*364);
 		
 		pca(X(slice, Range::all()), Mat(), CV_PCA_DATA_AS_COL, 100);
 		
@@ -183,17 +198,22 @@ int main(int argc, char** argv)
 	
 	vector<Mat*> testingSketchesDescriptors(nTestingSketches), testingPhotosDescriptors(nTestingPhotos);
 	
+	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingSketches; i++){
 		Mat desc(1, n*99, CV_32F);
 		img = imread(testingSketches[i],0);
 		//resize(img, img, Size(64,80));
 		testingSketchesDescriptors[i] = new Mat();
-		temp = extractDescriptors(img, size, delta);
 		
-		for(int i=0; i<n; i++){
-			Mat aux = ((*(projectionMatrix[i])).t()*temp(Range(i*m*364,(i+1)*m*364), Range::all())).t();
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta);
+		temp = temp - meanXs;
+		
+		for(int col=0; col<n; col++){
+			Range slice = Range(col*m*364,(col+1)*m*364);
+			Mat aux = ((*(projectionMatrix[col])).t()*temp(slice, Range::all())).t();
 			//normalize(aux,aux,1,0, NORM_MINMAX);
-			aux.copyTo(desc(Range::all(), Range(i*99,(i+1)*99)));
+			aux.copyTo(desc(Range::all(), Range(col*99,(col+1)*99)));
 		}
 		
 		*(testingSketchesDescriptors[i]) = desc.clone();
@@ -202,17 +222,22 @@ int main(int argc, char** argv)
 		//cout << *(testingSketchesDescriptors[i]) << endl;
 	}
 	
+	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingPhotos; i++){
 		Mat desc(1, n*99, CV_32F);
 		img = imread(testingPhotos[i],0);
 		//resize(img, img, Size(64,80));
 		testingPhotosDescriptors[i] = new Mat();
-		temp = extractDescriptors(img, size, delta);
 		
-		for(int i=0; i<n; i++){
-			Mat aux = ((*(projectionMatrix[i])).t()*temp(Range(i*m*364,(i+1)*m*364), Range::all())).t();
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta);
+		temp = temp - meanXp;
+		
+		for(int col=0; col<n; col++){
+			Range slice = Range(col*m*364,(col+1)*m*364);
+			Mat aux = ((*(projectionMatrix[col])).t()*temp(slice, Range::all())).t();
 			//normalize(aux,aux,1,0, NORM_MINMAX);
-			aux.copyTo(desc(Range::all(), Range(i*99,(i+1)*99)));
+			aux.copyTo(desc(Range::all(), Range(col*99,(col+1)*99)));
 		}
 		
 		*(testingPhotosDescriptors[i]) = desc.clone();
@@ -224,7 +249,7 @@ int main(int argc, char** argv)
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	FileStorage file("lfda-500cufsf694-final16.xml", FileStorage::WRITE);
+	FileStorage file("lfda-500cufsf694-p16.xml", FileStorage::WRITE);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){

@@ -139,7 +139,7 @@ inline void extractHOG_(InputArray _src, OutputArray _dst){
 
 template <typename _Tp> static
 inline void extractHAOG_(InputArray _src, OutputArray _dst){
-		Mat src = _src.getMat();
+	Mat src = _src.getMat();
 	_dst.create(1, 9, CV_32FC1);
 	Mat dst = _dst.getMat();
 	dst.setTo(0);
@@ -190,6 +190,31 @@ inline void extractHAOG_(InputArray _src, OutputArray _dst){
 			int index = ceil((theta.at<float>(x,y)+180)/40)-1;
 			dst.at<float>(index)+=magn_sq.at<float>(x,y);
 		}
+	}
+}
+
+template <typename _Tp> static
+inline void extractLRBP_(InputArray _src, OutputArray _dst){
+	
+	/// Establish the number of bins
+	int histSize = 32;
+	/// Set the ranges of histogram
+	float range[] = {0, 255} ;
+	const float* histRange = { range };
+	
+	Mat src = _src.getMat();
+	_dst.create(1, histSize, CV_32FC1);
+	Mat dst = _dst.getMat();
+	dst.setTo(0);
+	
+	Mat radon = radonTransform(src);
+	Mat lrbp = elbp(radon, 2, 8);
+	lrbp.convertTo(lrbp, CV_32F);
+	Mat hist;
+	calcHist(&lrbp, 1, 0, Mat(), hist, 1, &histSize, &histRange);
+	
+	for(int i=0; i<histSize; i++){
+		dst.at<float>(i)=hist.at<float>(i);
 	}
 }
 
@@ -258,6 +283,20 @@ void extractHAOG(InputArray src, OutputArray dst) {
 	}
 }
 
+void extractLRBP(InputArray src, OutputArray dst) {
+	switch (src.type()) {
+		case CV_8SC1:   extractLRBP_<char>(src,dst); break;
+		case CV_8UC1:   extractLRBP_<unsigned char>(src, dst); break;
+		case CV_16SC1:  extractLRBP_<short>(src,dst); break;
+		case CV_16UC1:  extractLRBP_<unsigned short>(src,dst); break;
+		case CV_32SC1:  extractLRBP_<int>(src,dst); break;
+		case CV_32FC1:  extractLRBP_<float>(src,dst); break;
+		case CV_64FC1:  extractLRBP_<double>(src,dst); break;
+		default: break;
+	}
+}
+
+
 
 
 //------------------------------------------------------------------------------
@@ -290,5 +329,11 @@ Mat extractHOG(InputArray src){
 Mat extractHAOG(InputArray src){
 	Mat dst;
 	extractHAOG(src, dst);
+	return dst;
+}
+
+Mat extractLRBP(InputArray src){
+	Mat dst;
+	extractLRBP(src, dst);
 	return dst;
 }

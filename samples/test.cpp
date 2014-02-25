@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 				0.808703681865, 0.48242375244, 0.0961390490465, 0.585178232015, 0.0947071702324, 0.00663925147531, 0.409282147388, 0.865532591897,
 				0.233760414088, 0.399258033215, 0.547551739688, 0.078241816204, 0.672857401346, 0.083814529556, 0.68575517509, 0.213487218459	};
 	
-	vector<int> labels = {1,1,2,2,2,2,2,2};
+	vector<int> labels = {1,1,1,1,1,2,1,2};
 	
 	Mat data(Size(8,8), CV_32F, a);
 	
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 	PCA pca;
 	LDA lda;
 	
-	pca(data, Mat(), CV_PCA_DATA_AS_ROW, 5);
+	pca(data, Mat(), CV_PCA_DATA_AS_ROW, 7);
 	
 	//cout << pca.project(data) << endl;
 	

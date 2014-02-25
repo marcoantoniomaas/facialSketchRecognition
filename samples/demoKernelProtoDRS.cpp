@@ -11,18 +11,22 @@ using namespace cv;
 Mat extractDescriptors(InputArray src, int size, int delta){
 	
 	Mat img = src.getMat();
+	img = DoGFilter(img);
+	//img = GaussianFilter(img);
+	//img = CSDNFilter(img);
 	int w = img.cols, h=img.rows;
 	int n = (w-size)/delta+1, m=(h-size)/delta+1;
 	int point = 0;
 	
-	Mat result = Mat::zeros(m*n*128, 1, CV_32F);
+	Mat result = Mat::zeros(m*n*236, 1, CV_32F);
 	Mat desc, temp;
 	
 	for(int i=0;i<=w-size;i+=(size-delta)){
 		for(int j=0; j<=h-size; j+=(size-delta)){
 			temp = img(Rect(i,j,size,size));
-			extractSIFT(temp, desc);
-			//extractMLBP(temp, desc);
+			//extractHAOG(temp, desc);
+			//extractSIFT(temp, desc);
+			extractMLBP(temp, desc);
 			normalize(desc, desc ,1);
 			for(uint pos=0; pos<desc.total(); pos++){
 				result.at<float>(point+pos) = desc.at<float>(pos);
@@ -45,17 +49,17 @@ int main(int argc, char** argv)
 	//loadImages(argv[4], testingSketches);
 	//loadImages(argv[5], extraPhotos);
 	
-	auto seed = unsigned (time(0));
+	auto seed = unsigned (0);
 	
 	srand (seed);
 	random_shuffle (vsketches.begin(), vsketches.end());
 	srand (seed);
 	random_shuffle (vphotos.begin(), vphotos.end());
 	
-	trainingPhotos.insert(trainingPhotos.end(),vphotos.begin()+994,vphotos.begin()+1194);
-	trainingSketches.insert(trainingSketches.end(),vsketches.begin()+994,vsketches.begin()+1194);
-	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.begin()+100);
-	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.begin()+100);
+	trainingPhotos.insert(trainingPhotos.end(),vphotos.begin(),vphotos.begin()+400);
+	trainingSketches.insert(trainingSketches.end(),vsketches.begin(),vsketches.begin()+400);
+	testingPhotos.insert(testingPhotos.end(),vphotos.begin()+400,vphotos.begin()+600);
+	testingSketches.insert(testingSketches.end(),vsketches.begin()+400,vsketches.begin()+600);
 	
 	//testingPhotos.insert(testingPhotos.end(),extraPhotos.begin(),extraPhotos.begin()+10000);
 	
@@ -82,7 +86,6 @@ int main(int argc, char** argv)
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingSketches[i],0);
-		img = DoGFilter(img);
 		trainingSketchesDescriptors[i] = new Mat();
 		
 		#pragma omp critical
@@ -94,7 +97,6 @@ int main(int argc, char** argv)
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTraining; i++){
 		img = imread(trainingPhotos[i],0);
-		img = DoGFilter(img);
 		trainingPhotosDescriptors[i] = new Mat();
 		
 		#pragma omp critical
@@ -110,7 +112,6 @@ int main(int argc, char** argv)
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingSketches; i++){
 		img = imread(testingSketches[i],0);
-		img = DoGFilter(img);
 		testingSketchesDescriptors[i] = new Mat();
 		
 		#pragma omp critical
@@ -122,7 +123,6 @@ int main(int argc, char** argv)
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingPhotos; i++){
 		img = imread(testingPhotos[i],0);
-		img = DoGFilter(img);
 		testingPhotosDescriptors[i] = new Mat();
 		
 		#pragma omp critical
@@ -134,7 +134,6 @@ int main(int argc, char** argv)
 	
 	PCA pca;
 	LDA lda;
-	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	vector<int> labels;
 	
 	for(uint i=0; i<nTraining; i++){
@@ -143,29 +142,36 @@ int main(int argc, char** argv)
 	labels.insert(labels.end(),labels.begin(),labels.end());
 	
 	//bags
-	for(int b=0; b<1; b++){
-		//crio uma bag
+	vector<Mat*> testingSketchesDescriptorsBag(nTestingSketches), testingPhotosDescriptorsBag(nTestingPhotos);
+	
+	for(int b=0; b<30; b++){
 		
-		uint dim = (*(trainingPhotosDescriptors[0])).total();
+		vector<int> bag_indexes = gen_bag(154, 0.1);
+		
+		uint dim = (bag(*(trainingPhotosDescriptors[0]), bag_indexes, 154)).total();
 		
 		Mat X(dim, 2*nTraining, CV_32F);
-		
 		
 		#pragma omp parallel for private(img, temp)
 		for(uint i=0; i<nTraining; i++){
 			temp = *(trainingSketchesDescriptors[i]);
-			//extract bag
+			temp = bag(temp, bag_indexes, 154);
 			temp.copyTo(X.col(i));
 		}
 		
 		#pragma omp parallel for private(img, temp)
 		for(uint i=0; i<nTraining; i++){
 			temp = *(trainingPhotosDescriptors[i]);
-			//extract bag
+			temp = bag(temp, bag_indexes, 154);
 			temp.copyTo(X.col(i+nTraining));
 		}
 		
+		Mat Xs = X(Range::all(), Range(0,nTraining));
+		Mat Xp = X(Range::all(), Range(nTraining,2*nTraining));
+		
 		Mat meanX = Mat::zeros(dim, 1, CV_32F), instance;
+		Mat meanXs = Mat::zeros(dim, 1, CV_32F);
+		Mat meanXp = Mat::zeros(dim, 1, CV_32F);
 		
 		// calculate sums
 		for (int i = 0; i < X.cols; i++) {
@@ -173,8 +179,21 @@ int main(int argc, char** argv)
 			add(meanX, instance, meanX);
 		}
 		
+		for (int i = 0; i < Xs.cols; i++) {
+			instance = Xs.col(i);
+			add(meanXs, instance, meanXs);
+		}
+		
+		for (int i = 0; i < Xp.cols; i++) {
+			instance = Xp.col(i);
+			add(meanXp, instance, meanXp);
+		}
+		
 		// calculate total mean
 		meanX.convertTo(meanX, CV_32F, 1.0/static_cast<double>(X.cols));
+		meanXs.convertTo(meanXs, CV_32F, 1.0/static_cast<double>(Xs.cols));
+		meanXp.convertTo(meanXp, CV_32F, 1.0/static_cast<double>(Xp.cols));
+		
 		
 		// subtract the mean of matrix
 		for(int i=0; i<X.cols; i++) {
@@ -182,48 +201,81 @@ int main(int argc, char** argv)
 			subtract(c_i, meanX.reshape(1,dim), c_i);
 		}
 		
+		for(int i=0; i<Xs.cols; i++) {
+			Mat c_i = Xs.col(i);
+			subtract(c_i, meanXs.reshape(1,dim), c_i);
+		}
+		
+		for(int i=0; i<Xp.cols; i++) {
+			Mat c_i = Xp.col(i);
+			subtract(c_i, meanXp.reshape(1,dim), c_i);
+		}
+		
 		//crio uma matriz com os descritores que saem da bag
 		//aplico uma pca com variancia de .99
 		//aplico a lda
 		cout << "training pca-lda" << endl;
-		pca.computeVar(X, Mat(), CV_PCA_DATA_AS_COL, .99);
-		Mat W1 = (pca.eigenvectors.clone()).t();
+		
+		if(meanX.total() >= nTraining)
+			pca(X, Mat(), CV_PCA_DATA_AS_COL, nTraining-1);
+		else
+			pca.computeVar(X, Mat(), CV_PCA_DATA_AS_COL, .99);
+		
+		Mat W1 = pca.eigenvectors.t();
 		Mat ldaData = (W1.t()*X).t();
 		lda.compute(ldaData, labels);
 		Mat W2 = lda.eigenvectors();
 		W2.convertTo(W2, CV_32F);
 		Mat projectionMatrix = (W2.t()*W1.t()).t();
 		
-		
 		//testing
-		
-		vector<Mat*> testingSketchesDescriptorsBag(nTestingSketches), testingPhotosDescriptorsBag(nTestingPhotos);
-		
 		#pragma omp parallel for private(img, temp)
 		for(uint i=0; i<nTestingSketches; i++){
-			testingSketchesDescriptorsBag[i] = new Mat();
-			temp = *(testingSketchesDescriptors[i]);//extract bag and multiply by projectionMatrix
-			*(testingSketchesDescriptorsBag[i]) = projectionMatrix.t()*(temp-meanX);
+			temp = *(testingSketchesDescriptors[i]);
+			temp = bag(temp, bag_indexes, 154);
+			temp = projectionMatrix.t()*(temp-meanX);
+			//temp = lda.project(pca.project(temp-meanXs));
+			//normalize(temp, temp, 1);
+			if(b==0){
+				testingSketchesDescriptorsBag[i] = new Mat();
+				*(testingSketchesDescriptorsBag[i]) = temp.clone();
+			}
+			else{
+				vconcat(*(testingSketchesDescriptorsBag[i]), temp, *(testingSketchesDescriptorsBag[i]));
+			}
 		}
 		
 		#pragma omp parallel for private(img, temp)
 		for(uint i=0; i<nTestingPhotos; i++){
-			testingPhotosDescriptorsBag[i] = new Mat();
-			temp = *(testingPhotosDescriptors[i]);//extract bag and multiply by projectionMatrix
-			*(testingPhotosDescriptorsBag[i]) = projectionMatrix.t()*(temp-meanX);
+			temp = *(testingPhotosDescriptors[i]);
+			temp = bag(temp, bag_indexes, 154);
+			temp = projectionMatrix.t()*(temp-meanX);
+			//temp = lda.project(pca.project(temp-meanXp));
+			//normalize(temp, temp, 1);
+			if(b==0){
+				testingPhotosDescriptorsBag[i] = new Mat();
+				*(testingPhotosDescriptorsBag[i]) = temp.clone();
+			}
+			else{
+				vconcat(*(testingPhotosDescriptorsBag[i]), temp, *(testingPhotosDescriptorsBag[i]));
+			}
 		}
 		
 		cerr << "calculating distances bag: " << b << endl;
 		
-		#pragma omp parallel for
-		for(uint i=0; i<nTestingSketches; i++){
-			for(uint j=0; j<nTestingPhotos; j++){
-				distances.at<double>(i,j) += norm(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j]));
-			}
+		
+	}
+	
+	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
+	
+	#pragma omp parallel for
+	for(uint i=0; i<nTestingSketches; i++){
+		for(uint j=0; j<nTestingPhotos; j++){
+			distances.at<double>(i,j) = abs(1-cosineDistance(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j])));
 		}
 	}
 	
-	FileStorage file("kernelproto-drs-cufsf.xml", FileStorage::WRITE);
+	FileStorage file("kernelproto-drs-cufsf-cosine-dog-mlbp.xml", FileStorage::WRITE);
 	file << "distanceMatrix" << distances;
 	file.release();
 	

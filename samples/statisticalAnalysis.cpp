@@ -20,6 +20,17 @@ int main(int argc, char** argv)
 	vector<int> rank(distances.rows);
 	multiset<double> realPairs, impostors;
 	
+	for(int i=0; i<distances.cols; i++) {
+		Mat xi = distances.col(i);
+		// mean and standard deviation
+		//Scalar cvMean;
+		//Scalar cvStddev;
+		//meanStdDev(c_i, cvMean, cvStddev);
+		//c_i = (c_i-cvMean);
+		//c_i = c_i.mul(Mat::ones(c_i.size(), c_i.type()),1/cvStddev[0]);
+		normalize(xi, xi, 1, 0, NORM_MINMAX);
+	}
+	
 	for(int i=0; i<distances.rows; i++){
 		rank[i] = 1;
 		for(int j=0; j<distances.cols; j++){
@@ -31,16 +42,6 @@ int main(int argc, char** argv)
 		cout << i+1 << ": " << rank[i] << endl;
 	}
 	
-	for(int i=0; i<distances.cols; i++) {
-		Mat xi = distances.col(i);
-		// mean and standard deviation
-		//Scalar cvMean;
-		//Scalar cvStddev;
-		//meanStdDev(c_i, cvMean, cvStddev);
-		//c_i = (c_i-cvMean);
-		//c_i = c_i.mul(Mat::ones(c_i.size(), c_i.type()),1/cvStddev[0]);
-		normalize(xi, xi, 1, 0, NORM_MINMAX);
-	}
 	// mean and standard deviation
 	//Scalar cvMean;
 	//Scalar cvStddev;
@@ -78,6 +79,7 @@ int main(int argc, char** argv)
 		else{
 			threshold = *it;
 		}
+		//cout << threshold << endl;
 		cout << "VR at FAR " << far*100 << "%:\t" << (float)count_if(realPairs.begin(), realPairs.end(), [threshold](double x) 
 		{return x <= threshold;})/distances.rows*100 << "%" << endl;
 	}

@@ -16,7 +16,7 @@ int histSize = 8;
 float range[] = {0, 1} ;
 const float* histRange = { range };
 
-bool PCALDA = true;
+bool PCALDA = false;
 
 Mat extractGaborShape(InputArray _img){
 	
@@ -24,7 +24,7 @@ Mat extractGaborShape(InputArray _img){
 	vector<vector<Mat> > mpatches, rpatches;
 	int count = 0;
 	Mat hist, radon, gaborMag;
-	Mat temp = Mat::zeros(1, 40*mhor*mver*nhor*nver*histSize, CV_32F);
+	Mat temp = Mat::zeros(40*mhor*mver*nhor*nver*histSize, 1, CV_32F);
 	
 	for(int mu=0; mu<8; mu++){
 		for(int nu=0; nu<5; nu++){
@@ -66,6 +66,12 @@ int main(int argc, char** argv)
 	//loadImages(argv[4], testingSketches);
 	//loadImages(argv[5], extraPhotos);
 	
+	auto seed = unsigned (time(0));
+	
+	srand (seed);
+	random_shuffle (vsketches.begin(), vsketches.end());
+	srand (seed);
+	random_shuffle (vphotos.begin(), vphotos.end());
 	
 	if(PCALDA){
 		trainingPhotos.insert(trainingPhotos.end(),vphotos.begin()+694,vphotos.begin()+1194);
@@ -85,10 +91,10 @@ int main(int argc, char** argv)
 	
 	vector<Mat*> testingPhotosGaborShape, testingSketchesGaborShape, extraPhotosGaborShape;
 	
-	Mat trainingData(2*nTraining, 40*mhor*mver*nhor*nver*histSize, CV_32F);
+	Mat trainingData(40*mhor*mver*nhor*nver*histSize, 2*nTraining, CV_32F);
 	vector<int> labels(2*nTraining);
 	
-	Mat img, xi, temp, mean, eigenvectors;
+	Mat img, xi, temp, mean, projectionMatrix;
 	PCA pca;
 	LDA lda;
 	
@@ -98,7 +104,7 @@ int main(int argc, char** argv)
 			img = imread(trainingPhotos[i],0);
 			resize(img, img, Size(128,160));
 			cout << "trainingPhoto " << i << endl;
-			xi = trainingData.row(i);
+			xi = trainingData.col(i);
 			temp = extractGaborShape(img);
 			normalize(temp, temp, 1, 0, NORM_MINMAX);
 			temp.copyTo(xi);		
@@ -110,18 +116,18 @@ int main(int argc, char** argv)
 			img = imread(trainingSketches[i],0);
 			resize(img, img, Size(128,160));
 			cout << "trainingSketches " << i << endl;
-			xi = trainingData.row(nTraining+i);
+			xi = trainingData.col(nTraining+i);
 			temp = extractGaborShape(img);
 			normalize(temp, temp, 1, 0, NORM_MINMAX);
 			temp.copyTo(xi);
 			labels[nTraining+i]=i;
 		}
 		
-		mean = Mat::zeros(1, trainingData.cols, CV_32F);
+		mean = Mat::zeros(trainingData.rows, 1, CV_32F);
 		
 		// calculate sums
-		for (int i = 0; i < trainingData.rows; i++) {
-			Mat instance = trainingData.row(i);
+		for (int i = 0; i < trainingData.cols; i++) {
+			Mat instance = trainingData.col(i);
 			add(mean, instance, mean);
 		}
 		
@@ -129,25 +135,26 @@ int main(int argc, char** argv)
 		mean.convertTo(mean, CV_32F, 1.0/static_cast<double>(trainingData.rows));
 		
 		// subtract the mean of matrix
-		for(int i=0; i<trainingData.rows; i++) {
-			Mat r_i = trainingData.row(i);
-			subtract(r_i, mean.reshape(1,1), r_i);
+		for(int i=0; i<trainingData.cols; i++) {
+			Mat c_i = trainingData.col(i);
+			subtract(c_i, mean.reshape(1,trainingData.rows), c_i);
 		}
 		
 		cout << "Starting the training" << endl;
 		
-		int dim = 700;
+		int dim = 800;
 		
-		pca(trainingData, Mat(), CV_PCA_DATA_AS_ROW, dim);
+		pca(trainingData, Mat(), CV_PCA_DATA_AS_COL, dim);
+		Mat W1 = pca.eigenvectors.t();
 		
-		Mat trainingDataPCA = pca.project(trainingData);
+		Mat trainingDataPCA = (W1.t()*trainingData).t();
 		
 		lda.compute(trainingDataPCA, labels);
 		
-		Mat ldaEigenvectors;
-		lda.eigenvectors().convertTo(ldaEigenvectors, CV_32F);
+		Mat W2 = lda.eigenvectors();
+		W2.convertTo(W2, CV_32F);
 		
-		gemm(pca.eigenvectors, ldaEigenvectors, 1.0, Mat(), 0.0, eigenvectors, GEMM_1_T);
+		projectionMatrix = (W2.t()*W1.t()).t();
 		
 		cout << "Finish the training" << endl;
 	}
@@ -170,7 +177,7 @@ int main(int argc, char** argv)
 		if(PCALDA){
 			temp = extractGaborShape(img);
 			normalize(temp, temp, 1, 0, NORM_MINMAX);
-			gemm((temp-mean),eigenvectors, 1.0, Mat(), 0.0, temp);
+			temp = projectionMatrix.t()*(temp-mean);
 		}
 		else{
 			temp = extractGaborShape(img);
@@ -189,7 +196,7 @@ int main(int argc, char** argv)
 		if(PCALDA){
 			temp = extractGaborShape(img);
 			normalize(temp, temp, 1, 0, NORM_MINMAX);
-			gemm((temp-mean),eigenvectors, 1.0, Mat(), 0.0, temp);
+			temp = projectionMatrix.t()*(temp-mean);
 		}
 		else{
 			temp = extractGaborShape(img);
@@ -199,15 +206,15 @@ int main(int argc, char** argv)
 		//cout << i <<" "<<*(testingSketchesGaborShape[i]) << endl;
 	}
 	
-	for(uint i=0; i<nTestingSketches; i++){
-		cout <<*(testingPhotosGaborShape[i]) << endl;
-		cout <<*(testingSketchesGaborShape[i]) << endl;
-	}
+	//for(uint i=0; i<nTestingSketches; i++){
+	//	cout <<*(testingPhotosGaborShape[i]) << endl;
+	//	cout <<*(testingSketchesGaborShape[i]) << endl;
+	//}
 	
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	FileStorage file("gs-cufsf-lda.xml", FileStorage::WRITE);
+	FileStorage file("gs-cufsf-694.xml", FileStorage::WRITE);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){

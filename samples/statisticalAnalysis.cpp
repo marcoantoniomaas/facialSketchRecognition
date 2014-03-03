@@ -8,14 +8,23 @@ using namespace cv;
 int main(int argc, char** argv)
 {
 	Mat distances;
-	FileStorage file(argv[1], FileStorage::READ);
 	
-	if(file.isOpened()==false){
-		cerr << "No file was opened" << endl;
-		return -1;
+	for(int i=1; i<argc; i++){
+		Mat distancesTemp;
+		cout << "Reading " << argv[i] << endl; 
+		FileStorage file(argv[i], FileStorage::READ);
+		if(file.isOpened()==false){
+			cerr << "File " << i << " not opened" << endl;
+			return -1;
+		}
+		file["distanceMatrix"] >> distancesTemp;
+		normalize(distancesTemp, distancesTemp, 1, 0, NORM_MINMAX);
+		if(i==1)
+			distances = distancesTemp.clone();
+		else
+			distances+=distancesTemp;
+		file.release();
 	}
-	file["distanceMatrix"] >> distances;
-	file.release();
 	
 	vector<int> rank(distances.rows);
 	multiset<double> realPairs, impostors;

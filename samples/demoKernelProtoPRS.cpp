@@ -12,20 +12,22 @@ using namespace cv;
 Mat extractDescriptors(InputArray src, int size, int delta){
 	
 	Mat img = src.getMat();
-	//img = DoGFilter(img);
+	img = DoGFilter(img);
+	//img = CSDNFilter(img);
+	//img = GaussianFilter(img);
 	int w = img.cols, h=img.rows;
 	int n = (w-size)/delta+1, m=(h-size)/delta+1;
 	int point = 0;
 	
-	Mat result = Mat::zeros(m*n*128, 1, CV_32F);
+	Mat result = Mat::zeros(m*n*236, 1, CV_32F);
 	Mat desc, temp;
 	
 	for(int i=0;i<=w-size;i+=(size-delta)){
 		for(int j=0; j<=h-size; j+=(size-delta)){
 			temp = img(Rect(i,j,size,size));
 			//extractHAOG(temp, desc);
-			extractSIFT(temp, desc);
-			//extractMLBP(temp, desc);
+			//extractSIFT(temp, desc);
+			extractMLBP(temp, desc);
 			normalize(desc, desc ,1);
 			for(uint pos=0; pos<desc.total(); pos++){
 				result.at<float>(point+pos) = desc.at<float>(pos);
@@ -61,7 +63,7 @@ int main(int argc, char** argv)
 	srand (seed);
 	random_shuffle (vphotos.begin(), vphotos.end());
 	
-	int tam = 159;
+	int tam = 606;
 	
 	trainingPhotos1.insert(trainingPhotos1.end(),vphotos.begin(),vphotos.begin()+tam/3);
 	trainingSketches1.insert(trainingSketches1.end(),vsketches.begin(),vsketches.begin()+tam/3);
@@ -297,7 +299,7 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	FileStorage file("kernelproto-prs-cufsf-cosine3.xml", FileStorage::WRITE);
+	FileStorage file("kernelproto-prs-cufsf-cosine-dog-mlbp.xml", FileStorage::WRITE);
 	file << "distanceMatrix" << distances;
 	file.release();
 	

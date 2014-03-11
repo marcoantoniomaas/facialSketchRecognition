@@ -11,22 +11,22 @@ using namespace cv;
 Mat extractDescriptors(InputArray src, int size, int delta){
 	
 	Mat img = src.getMat();
-	img = DoGFilter(img);
-	//img = GaussianFilter(img);
+	//img = DoGFilter(img);
+	img = GaussianFilter(img);
 	//img = CSDNFilter(img);
 	int w = img.cols, h=img.rows;
 	int n = (w-size)/delta+1, m=(h-size)/delta+1;
 	int point = 0;
 	
-	Mat result = Mat::zeros(m*n*236, 1, CV_32F);
+	Mat result = Mat::zeros(m*n*9, 1, CV_32F);
 	Mat desc, temp;
 	
 	for(int i=0;i<=w-size;i+=(size-delta)){
 		for(int j=0; j<=h-size; j+=(size-delta)){
 			temp = img(Rect(i,j,size,size));
-			//extractHAOG(temp, desc);
+			extractHAOG(temp, desc);
 			//extractSIFT(temp, desc);
-			extractMLBP(temp, desc);
+			//extractMLBP(temp, desc);
 			normalize(desc, desc ,1);
 			for(uint pos=0; pos<desc.total(); pos++){
 				result.at<float>(point+pos) = desc.at<float>(pos);
@@ -56,10 +56,12 @@ int main(int argc, char** argv)
 	srand (seed);
 	random_shuffle (vphotos.begin(), vphotos.end());
 	
-	trainingPhotos.insert(trainingPhotos.end(),vphotos.begin(),vphotos.begin()+400);
-	trainingSketches.insert(trainingSketches.end(),vsketches.begin(),vsketches.begin()+400);
-	testingPhotos.insert(testingPhotos.end(),vphotos.begin()+400,vphotos.begin()+600);
-	testingSketches.insert(testingSketches.end(),vsketches.begin()+400,vsketches.begin()+600);
+	int tam = vphotos.size();
+	
+	trainingPhotos.insert(trainingPhotos.end(),vphotos.begin(),vphotos.begin()+2*tam/3);
+	trainingSketches.insert(trainingSketches.end(),vsketches.begin(),vsketches.begin()+2*tam/3);
+	testingPhotos.insert(testingPhotos.end(),vphotos.begin()+2*tam/3,vphotos.begin()+tam);
+	testingSketches.insert(testingSketches.end(),vsketches.begin()+2*tam/3,vsketches.begin()+tam);
 	
 	//testingPhotos.insert(testingPhotos.end(),extraPhotos.begin(),extraPhotos.begin()+10000);
 	
@@ -266,18 +268,25 @@ int main(int argc, char** argv)
 		
 	}
 	
-	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
+	Mat distancesL2 = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
+	Mat distancesCosine = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){
 		for(uint j=0; j<nTestingPhotos; j++){
-			distances.at<double>(i,j) = abs(1-cosineDistance(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j])));
+			distancesL2.at<double>(i,j) = norm(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j]));
+			distancesCosine.at<double>(i,j) = abs(1-cosineDistance(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j])));
 		}
 	}
 	
-	FileStorage file("kernelproto-drs-cufsf-cosine-dog-mlbp.xml", FileStorage::WRITE);
-	file << "distanceMatrix" << distances;
-	file.release();
+	FileStorage file1("kernelproto-drs-cufsf-gaussian-haog-l2.xml", FileStorage::WRITE);
+	FileStorage file2("kernelproto-drs-cufsf-gaussian-haog-cosine.xml", FileStorage::WRITE);
+	
+	file1 << "distanceMatrix" << distancesL2;
+	file2 << "distanceMatrix" << distancesCosine;
+	
+	file1.release();
+	file2.release();
 	
 	return 0;
 }

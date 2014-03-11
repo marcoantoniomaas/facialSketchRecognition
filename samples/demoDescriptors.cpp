@@ -17,15 +17,16 @@ Mat extractDescriptors(InputArray src, int size, int delta){
 	vector<vector<Mat> > patches;
 	patcher(img, Size(size,size), delta, patches);
 	
-	Mat result = Mat::zeros(m*n*32, 1, CV_32F);
+	Mat result = Mat::zeros(m*n*236, 1, CV_32F);
 	Mat a, b, temp;
 	
 	for(uint i=0; i<patches.size(); i++){
 		for(uint j=0; j<patches[0].size(); j++){
 			temp = patches[i][j];
 			//extractSIFT(temp,a);
-			//extractMLBP(temp,a)
-			extractLRBP(temp, a);
+			extractMLBP(temp,a);
+			//extractLRBP(temp, a);
+			//extractHAOG(temp, a);
 			normalize(a,a,1);
 			for(uint pos=0; pos<a.total(); pos++){
 				result.at<float>(point+pos) = a.at<float>(pos);
@@ -40,16 +41,13 @@ Mat extractDescriptors(InputArray src, int size, int delta){
 int main(int argc, char** argv)
 {
 	
-	vector<string> testingPhotos, testingSketches, extraPhotos, vphotos, vsketches;
+	vector<string> testingPhotos, testingSketches, extraPhotos, photos, sketches;
 	
-	loadImages(argv[1], vphotos);
-	loadImages(argv[2], vsketches);
-	//loadImages(argv[3], testingPhotos);
-	//loadImages(argv[4], testingSketches);
-	//loadImages(argv[5], extraPhotos);
+	loadImages(argv[5], photos);
+	loadImages(argv[6], sketches);
 	
-	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.begin()+1194);
-	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.begin()+1194);
+	testingPhotos.insert(testingPhotos.end(),photos.begin(),photos.end());
+	testingSketches.insert(testingSketches.end(),sketches.begin(),sketches.end());
 	
 	//testingPhotos.insert(testingPhotos.end(),extraPhotos.begin(),extraPhotos.begin()+10000);
 	
@@ -58,8 +56,6 @@ int main(int argc, char** argv)
 	
 	cout << nTestingSketches << " sketches to verify." << endl;
 	cout << nTestingPhotos << " photos on the gallery" << endl;
-	
-	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	
 	Mat img, temp;
 	int size = 32;
@@ -99,17 +95,32 @@ int main(int argc, char** argv)
 	
 	cerr << "calculating distances" << endl;
 	
+	
+	Mat distancesChi = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
+	Mat distancesL2 = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
+	Mat distancesCosine = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
+	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){
 		for(uint j=0; j<nTestingPhotos; j++){
-			distances.at<double>(i,j) += chiSquareDistance(*(testingSketchesDescriptors[i]),*(testingPhotosDescriptors[j]));
+			distancesChi.at<double>(i,j) = chiSquareDistance(*(testingSketchesDescriptors[i]),*(testingPhotosDescriptors[j]));
+			distancesL2.at<double>(i,j) = norm(*(testingSketchesDescriptors[i]),*(testingPhotosDescriptors[j]));
+			distancesCosine.at<double>(i,j) = abs(1-cosineDistance(*(testingSketchesDescriptors[i]),*(testingPhotosDescriptors[j])));
 		}
 	}
 	
 	
-	FileStorage file("lrbp-cufsf.xml", FileStorage::WRITE);
-	file << "distanceMatrix" << distances;
-	file.release();
+	FileStorage file1("mlbp-forensic-chi.xml", FileStorage::WRITE);
+	FileStorage file2("mlbp-forensic-l2.xml", FileStorage::WRITE);
+	FileStorage file3("mlbp-forensic-cosine.xml", FileStorage::WRITE);
+	
+	file1 << "distanceMatrix" << distancesChi;
+	file2 << "distanceMatrix" << distancesL2;
+	file3 << "distanceMatrix" << distancesCosine;
+	
+	file1.release();
+	file2.release();
+	file3.release();
 	
 	return 0;
 }

@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 			}
 			
 		}
-		cout << i+1 << ": " << rank[i] << endl;
+		//cout << i+1 << ": " << rank[i] << endl;
 	}
 	
 	// mean and standard deviation
@@ -72,12 +72,21 @@ int main(int argc, char** argv)
 	
 	cout << "The number of subject is: " << distances.rows << endl; 
 	
-	for (int i : {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}){
-		cout << "Rank "<< i << ": ";
-		cout << "d= " << (float)count_if(rank.begin(), rank.end(), [i](int x) {return x <= i;})/distances.rows*100 << "%" << endl;
+	cout << "rank <- c(";
+	for (int i : {1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50}){
+		//cout << "Rank "<< i << ": ";
+		cout << (float)count_if(rank.begin(), rank.end(), [i](int x) {return x <= i;})/distances.rows << ",";
 	}
+	cout << "\b";
+	cout << ")" << endl;
 	
-	for (float far : {0.0001, 0.001, 0.01, 0.1, 1.0}){
+	cout << "VRatFAR <- c(";
+	for (float far : {
+	pow(10,-3), pow(10,-2.75), pow(10,-2.5), pow(10,-2.25), 
+	pow(10,-2), pow(10,-1.75), pow(10,-1.5), pow(10,-1.25), 
+	pow(10,-1), pow(10,-0.75), pow(10,-0.5), pow(10,-0.25), 
+	pow(10,0)}){
+		
 		int n = far*impostors.size()-1;
 		double threshold;
 		multiset<double>::iterator it = impostors.begin();
@@ -88,10 +97,10 @@ int main(int argc, char** argv)
 		else{
 			threshold = *it;
 		}
-		//cout << threshold << endl;
-		cout << "VR at FAR " << far*100 << "%:\t" << (float)count_if(realPairs.begin(), realPairs.end(), [threshold](double x) 
-		{return x <= threshold;})/distances.rows*100 << "%" << endl;
+		cout << (float)count_if(realPairs.begin(), realPairs.end(), [threshold](double x) {return x <= threshold;})/distances.rows << ",";
 	}
+	cout << "\b";
+	cout << ")" << endl;
 	
 	return 0;
 }

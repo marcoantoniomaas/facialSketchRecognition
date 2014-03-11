@@ -66,7 +66,7 @@ int main(int argc, char** argv)
 	//loadImages(argv[4], testingSketches);
 	//loadImages(argv[5], extraPhotos);
 	
-	auto seed = unsigned (time(0));
+	auto seed = unsigned (0);
 	
 	srand (seed);
 	random_shuffle (vsketches.begin(), vsketches.end());
@@ -83,8 +83,8 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.begin()+694);
-	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.begin()+694);
+	testingPhotos.insert(testingPhotos.end(),vphotos.begin(),vphotos.begin()+1194);
+	testingSketches.insert(testingSketches.end(),vsketches.begin(),vsketches.begin()+1194);
 	
 	uint nTraining = (uint)trainingPhotos.size();
 	cout << "The size of training set is: " << nTraining << endl;
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 		#pragma omp parallel for private(img, xi, temp)
 		for(uint i=0; i<nTraining; i++){
 			img = imread(trainingPhotos[i],0);
-			resize(img, img, Size(128,160));
+			//resize(img, img, Size(128,160));
 			cout << "trainingPhoto " << i << endl;
 			xi = trainingData.col(i);
 			temp = extractGaborShape(img);
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
 		#pragma omp parallel for private(img, xi, temp)
 		for(uint i=0; i<nTraining; i++){
 			img = imread(trainingSketches[i],0);
-			resize(img, img, Size(128,160));
+			//resize(img, img, Size(128,160));
 			cout << "trainingSketches " << i << endl;
 			xi = trainingData.col(nTraining+i);
 			temp = extractGaborShape(img);
@@ -171,7 +171,7 @@ int main(int argc, char** argv)
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingPhotos; i++){
 		img = imread(testingPhotos[i],0);
-		resize(img, img, Size(128,160));
+		//resize(img, img, Size(128,160));
 		cout << "testingPhotos " << i << endl;
 		testingPhotosGaborShape[i] = new Mat();
 		if(PCALDA){
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingSketches; i++){
 		img = imread(testingSketches[i],0);
-		resize(img, img, Size(128,160));
+		//resize(img, img, Size(128,160));
 		cout << "testingSketches " << i << endl;
 		testingSketchesGaborShape[i] = new Mat();
 		if(PCALDA){
@@ -214,7 +214,7 @@ int main(int argc, char** argv)
 	cerr << "calculating distances" << endl;
 	
 	Mat distances = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	FileStorage file("gs-cufsf-694.xml", FileStorage::WRITE);
+	FileStorage file("gs-cufsf-l2.xml", FileStorage::WRITE);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){

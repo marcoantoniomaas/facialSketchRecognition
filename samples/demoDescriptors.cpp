@@ -17,15 +17,15 @@ Mat extractDescriptors(InputArray src, int size, int delta){
 	vector<vector<Mat> > patches;
 	patcher(img, Size(size,size), delta, patches);
 	
-	Mat result = Mat::zeros(m*n*236, 1, CV_32F);
+	Mat result = Mat::zeros(m*n*32, 1, CV_32F);
 	Mat a, b, temp;
 	
 	for(uint i=0; i<patches.size(); i++){
 		for(uint j=0; j<patches[0].size(); j++){
 			temp = patches[i][j];
 			//extractSIFT(temp,a);
-			extractMLBP(temp,a);
-			//extractLRBP(temp, a);
+			//extractMLBP(temp,a);
+			extractLRBP(temp, a);
 			//extractHAOG(temp, a);
 			normalize(a,a,1);
 			for(uint pos=0; pos<a.total(); pos++){
@@ -43,8 +43,8 @@ int main(int argc, char** argv)
 	
 	vector<string> testingPhotos, testingSketches, extraPhotos, photos, sketches;
 	
-	loadImages(argv[5], photos);
-	loadImages(argv[6], sketches);
+	loadImages(argv[1], photos);
+	loadImages(argv[2], sketches);
 	
 	testingPhotos.insert(testingPhotos.end(),photos.begin(),photos.end());
 	testingSketches.insert(testingSketches.end(),sketches.begin(),sketches.end());
@@ -110,9 +110,9 @@ int main(int argc, char** argv)
 	}
 	
 	
-	FileStorage file1("mlbp-forensic-chi.xml", FileStorage::WRITE);
-	FileStorage file2("mlbp-forensic-l2.xml", FileStorage::WRITE);
-	FileStorage file3("mlbp-forensic-cosine.xml", FileStorage::WRITE);
+	FileStorage file1("lrbp-cufsf-chi.xml", FileStorage::WRITE);
+	FileStorage file2("lrbp-cufsf-l2.xml", FileStorage::WRITE);
+	FileStorage file3("lrbp-cufsf-cosine.xml", FileStorage::WRITE);
 	
 	file1 << "distanceMatrix" << distancesChi;
 	file2 << "distanceMatrix" << distancesL2;

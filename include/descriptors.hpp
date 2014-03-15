@@ -16,6 +16,8 @@ void elbp(InputArray src, OutputArray dst, int radius=1, int neighbors=8);
 Mat elbp(InputArray src, int radius=1, int neighbors=8);
 void extractMLBP(InputArray src, OutputArray dst);
 Mat extractMLBP(InputArray src);
+void extractLBP(InputArray src, OutputArray dst);
+Mat extractLBP(InputArray src);
 void extractSIFT(InputArray src, OutputArray dst);
 Mat extractSIFT(InputArray src);
 void extractHOG(InputArray src, OutputArray dst);

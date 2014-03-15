@@ -7,7 +7,8 @@
 #include <boost/filesystem.hpp>
 #include <eigen3/Eigen/Eigenvalues>
 #include <algorithm>
-//#include <opencv2/core/eigen.hpp>
+#include "filters.hpp"
+#include "descriptors.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -22,5 +23,6 @@ void cosineDistance(InputArray a, InputArray b, double& dist);
 double cosineDistance(InputArray a, InputArray b);
 vector<int> gen_bag(int tam, double alpha);
 Mat bag(InputArray desc, vector<int> &bag_indexes, int tam);
+Mat extractDescriptors(InputArray src, int size, int delta, string filter, string descriptor);
 
 #endif

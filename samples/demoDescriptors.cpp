@@ -7,39 +7,10 @@
 using namespace std;
 using namespace cv;
 
-Mat extractDescriptors(InputArray src, int size, int delta){
-	
-	Mat img = src.getMat();
-	int w = img.cols, h=img.rows;
-	int n = delta==0? w/size:(w-size)/delta+1, m= delta==0? h/size:(h-size)/delta+1;
-	int point = 0;
-	
-	vector<vector<Mat> > patches;
-	patcher(img, Size(size,size), delta, patches);
-	
-	Mat result = Mat::zeros(m*n*32, 1, CV_32F);
-	Mat a, b, temp;
-	
-	for(uint i=0; i<patches.size(); i++){
-		for(uint j=0; j<patches[0].size(); j++){
-			temp = patches[i][j];
-			//extractSIFT(temp,a);
-			//extractMLBP(temp,a);
-			extractLRBP(temp, a);
-			//extractHAOG(temp, a);
-			normalize(a,a,1);
-			for(uint pos=0; pos<a.total(); pos++){
-				result.at<float>(point+pos) = a.at<float>(pos);
-			}
-			point+=a.total();
-		}
-	}
-	
-	return result;
-}
-
 int main(int argc, char** argv)
 {
+	string filter = "None";
+	string descriptor = "HAOG";
 	
 	vector<string> testingPhotos, testingSketches, extraPhotos, photos, sketches;
 	
@@ -71,7 +42,7 @@ int main(int argc, char** argv)
 		testingSketchesDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(testingSketchesDescriptors[i]) =temp.clone();
 		
@@ -85,7 +56,7 @@ int main(int argc, char** argv)
 		testingPhotosDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(testingPhotosDescriptors[i]) = temp.clone();
 		
@@ -110,9 +81,9 @@ int main(int argc, char** argv)
 	}
 	
 	
-	FileStorage file1("lrbp-cufsf-chi.xml", FileStorage::WRITE);
-	FileStorage file2("lrbp-cufsf-l2.xml", FileStorage::WRITE);
-	FileStorage file3("lrbp-cufsf-cosine.xml", FileStorage::WRITE);
+	FileStorage file1("haog-cufsf-chi.xml", FileStorage::WRITE);
+	FileStorage file2("haog-cufsf-l2.xml", FileStorage::WRITE);
+	FileStorage file3("haog-cufsf-cosine.xml", FileStorage::WRITE);
 	
 	file1 << "distanceMatrix" << distancesChi;
 	file2 << "distanceMatrix" << distancesL2;

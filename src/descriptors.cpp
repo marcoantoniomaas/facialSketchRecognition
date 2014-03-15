@@ -81,6 +81,23 @@ inline void extractMLBP_(InputArray _src, OutputArray _dst){
 }
 
 template <typename _Tp> static
+inline void extractLBP_(InputArray _src, OutputArray _dst){
+	Mat src = _src.getMat();
+	_dst.create(1, 59, CV_32FC1);
+	Mat dst = _dst.getMat();
+	dst.setTo(0);
+	Mat temp;
+	temp = elbp(src);
+	for(int i = 0; i < temp.rows; i++){
+		for(int j = 0; j < temp.cols; j++){
+			int bin = UniformPattern59[temp.at<int>(i,j)];
+			dst.at<float>(bin) += 1;
+		}
+	}
+	
+}
+
+template <typename _Tp> static
 inline void extractSIFT_(InputArray _src, OutputArray _dst){
 	Mat src = _src.getMat();
 	_dst.create(1, 128, CV_32FC1);
@@ -244,6 +261,19 @@ void extractMLBP(InputArray src, OutputArray dst) {
 	}
 }
 
+void extractLBP(InputArray src, OutputArray dst) {
+	switch (src.type()) {
+		case CV_8SC1:   extractLBP_<char>(src,dst); break;
+		case CV_8UC1:   extractLBP_<unsigned char>(src, dst); break;
+		case CV_16SC1:  extractLBP_<short>(src,dst); break;
+		case CV_16UC1:  extractLBP_<unsigned short>(src,dst); break;
+		case CV_32SC1:  extractLBP_<int>(src,dst); break;
+		case CV_32FC1:  extractLBP_<float>(src,dst); break;
+		case CV_64FC1:  extractLBP_<double>(src,dst); break;
+		default: break;
+	}
+}
+
 void extractSIFT(InputArray src, OutputArray dst) {
 	switch (src.type()) {
 		case CV_8SC1:   extractSIFT_<char>(src,dst); break;
@@ -311,6 +341,12 @@ Mat elbp(InputArray src, int radius, int neighbors) {
 Mat extractMLBP(InputArray src) {
 	Mat dst;
 	extractMLBP(src, dst);
+	return dst;
+}
+
+Mat extractLBP(InputArray src) {
+	Mat dst;
+	extractLBP(src, dst);
 	return dst;
 }
 

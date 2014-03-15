@@ -145,3 +145,68 @@ Mat bag(InputArray desc_, vector<int> &bag_indexes, int tam){
 	
 	return result;
 }
+
+Mat extractDescriptors(InputArray src, int size, int delta, string filter, string descriptor){
+	
+	Mat img = src.getMat();
+	
+	if(filter == "DoG")
+		img = DoGFilter(img);
+	else if(filter == "CSDN")
+		img = CSDNFilter(img);
+	else if(filter == "Gaussian")
+		img = GaussianFilter(img);
+	
+	int w = img.cols, h=img.rows;
+	int n = (w-size)/delta+1, m=(h-size)/delta+1;
+	int point = 0;
+	
+	int descSize;
+	
+	if(descriptor == "SIFT")
+		descSize = 128;
+	else if(descriptor == "MLBP")
+		descSize = 236;
+	else if(descriptor == "HOG")
+		descSize = 9;
+	else if(descriptor == "HAOG")
+		descSize = 9;
+	else if(descriptor == "LRBP")
+		descSize = 32;
+	else if(descriptor == "LBP")
+		descSize = 59;
+	else
+		cout << "No descriptors" << endl;
+	
+	Mat result = Mat::zeros(m*n*descSize, 1, CV_32F);
+	Mat desc, temp;
+	
+	for(int i=0;i<=w-size;i+=(size-delta)){
+		for(int j=0; j<=h-size; j+=(size-delta)){
+			temp = img(Rect(i,j,size,size));
+			
+			if(descriptor == "SIFT")
+				extractSIFT(temp,desc);
+			else if(descriptor == "MLBP")
+				extractMLBP(temp,desc);
+			else if(descriptor == "HOG")
+				extractHOG(temp,desc);
+			else if(descriptor == "HAOG")
+				extractHAOG(temp,desc);
+			else if(descriptor == "LRBP")
+				extractLRBP(temp,desc);
+			else if(descriptor == "LBP")
+				extractLBP(temp,desc);
+			else
+				cout << "No descriptors" << endl;
+			
+			normalize(desc, desc ,1);
+			for(uint pos=0; pos<desc.total(); pos++){
+				result.at<float>(point+pos) = desc.at<float>(pos);
+			}
+			point+=desc.total();
+		}
+	}
+	
+	return result;
+}

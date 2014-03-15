@@ -8,38 +8,11 @@
 using namespace std;
 using namespace cv;
 
-Mat extractDescriptors(InputArray src, int size, int delta){
-	
-	Mat img = src.getMat();
-	//img = DoGFilter(img);
-	img = GaussianFilter(img);
-	//img = CSDNFilter(img);
-	int w = img.cols, h=img.rows;
-	int n = (w-size)/delta+1, m=(h-size)/delta+1;
-	int point = 0;
-	
-	Mat result = Mat::zeros(m*n*9, 1, CV_32F);
-	Mat desc, temp;
-	
-	for(int i=0;i<=w-size;i+=(size-delta)){
-		for(int j=0; j<=h-size; j+=(size-delta)){
-			temp = img(Rect(i,j,size,size));
-			extractHAOG(temp, desc);
-			//extractSIFT(temp, desc);
-			//extractMLBP(temp, desc);
-			normalize(desc, desc ,1);
-			for(uint pos=0; pos<desc.total(); pos++){
-				result.at<float>(point+pos) = desc.at<float>(pos);
-			}
-			point+=desc.total();
-		}
-	}
-	
-	return result;
-}
-
 int main(int argc, char** argv)
 {
+	
+	string filter = "Gaussian";
+	string descriptor = "HAOG";
 	
 	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos, vphotos, vsketches;
 	
@@ -91,7 +64,7 @@ int main(int argc, char** argv)
 		trainingSketchesDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(trainingSketchesDescriptors[i]) = temp.clone();
 	}
@@ -102,7 +75,7 @@ int main(int argc, char** argv)
 		trainingPhotosDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(trainingPhotosDescriptors[i]) = temp.clone();
 	}
@@ -117,7 +90,7 @@ int main(int argc, char** argv)
 		testingSketchesDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(testingSketchesDescriptors[i]) = temp.clone();
 	}
@@ -128,7 +101,7 @@ int main(int argc, char** argv)
 		testingPhotosDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(testingPhotosDescriptors[i]) = temp.clone();
 	}

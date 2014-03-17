@@ -13,126 +13,91 @@ int main(int argc, char** argv)
 {
 	string filter = "Gaussian";
 	string descriptor = "HAOG";
+	string database = "CUFSF";
+	int count = 0;
 	
-	vector<string> trainingPhotos1, trainingSketches1, trainingPhotos2, trainingSketches2, 
-	testingPhotos, testingSketches, extraPhotos, vphotos, vsketches;
+	vector<string> extraPhotos, photos, sketches;
 	
-	loadImages(argv[3], vphotos);
-	loadImages(argv[4], vsketches);
-	//loadImages(argv[3], testingPhotos);
-	//loadImages(argv[4], testingSketches);
-	//loadImages(argv[5], extraPhotos);
+	loadImages(argv[1], photos);
+	loadImages(argv[2], sketches);
+	//loadImages(argv[7], extraPhotos);
 	
-	if(vphotos.size()!=vsketches.size()){
-		cerr << "Training photos and sketches sets has different sizes" << endl;
-		return -1;
-	}
+	uint nPhotos = photos.size(),
+	nSketches = sketches.size(),
+	nExtra = extraPhotos.size();
 	
-	auto seed = unsigned (0);
+	uint nTraining = 2*nPhotos/3;
 	
-	srand (seed);
-	random_shuffle (vsketches.begin(), vsketches.end());
-	srand (seed);
-	random_shuffle (vphotos.begin(), vphotos.end());
+	cout << "Read " << nSketches << " sketches." << endl;
+	cout << "Read " << nPhotos + nExtra << " photos." << endl;
 	
-	int tam = vphotos.size();
-	
-	trainingPhotos1.insert(trainingPhotos1.end(),vphotos.begin(),vphotos.begin()+tam/3);
-	trainingSketches1.insert(trainingSketches1.end(),vsketches.begin(),vsketches.begin()+tam/3);
-	trainingPhotos2.insert(trainingPhotos2.end(),vphotos.begin()+tam/3,vphotos.begin()+2*tam/3);
-	trainingSketches2.insert(trainingSketches2.end(),vsketches.begin()+tam/3,vsketches.begin()+2*tam/3);
-	testingPhotos.insert(testingPhotos.end(),vphotos.begin()+2*tam/3,vphotos.begin()+tam);
-	testingSketches.insert(testingSketches.end(),vsketches.begin()+2*tam/3,vsketches.begin()+tam);
-	
-	//testingPhotos.insert(testingPhotos.end(),extraPhotos.begin(),extraPhotos.begin()+10000);
-	
-	uint nTraining1 = (uint)trainingPhotos1.size();
-	uint nTraining2 = (uint)trainingPhotos2.size();
-	uint nTestingSketches = testingSketches.size();
-	uint nTestingPhotos = testingPhotos.size();
-	
-	cout << nTraining1 << " and " << nTraining2 <<  " pairs to training." << endl;
-	cout << nTestingSketches << " sketches to verify." << endl;
-	cout << nTestingPhotos << " photos on the gallery" << endl;
+	vector<Mat*> sketchesDescriptors(nSketches), photosDescriptors(nPhotos), extraDescriptors(nExtra);
 	
 	Mat img, temp;
+	
 	int size=32, delta=16;
 	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nSketches; i++){
+		img = imread(sketches[i],0);
+		sketchesDescriptors[i] = new Mat();
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		*(sketchesDescriptors[i]) = temp.clone();
+	}
+	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nPhotos; i++){
+		img = imread(photos[i],0);
+		photosDescriptors[i] = new Mat();
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		*(photosDescriptors[i]) = temp.clone();
+	}
+	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nExtra; i++){
+		img = imread(extraPhotos[i],0);
+		extraDescriptors[i] = new Mat();
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		*(extraDescriptors[i]) = temp.clone();
+	}
+	
+	auto seed = unsigned(0);
+	
+	srand(seed);
+	random_shuffle(sketches.begin(), sketches.end());
+	srand(seed);
+	random_shuffle(photos.begin(), photos.end());
+	
 	//training
-	vector<Mat*> trainingSketchesDescriptors1(nTraining1), trainingPhotosDescriptors1(nTraining1), 
-	trainingSketchesDescriptors2(nTraining2), trainingPhotosDescriptors2(nTraining2);
+	vector<Mat*> trainingSketchesDescriptors1, trainingPhotosDescriptors1, 
+	trainingSketchesDescriptors2, trainingPhotosDescriptors2;
 	
-	cout << "extract descriptors from training set" << endl;
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTraining1; i++){
-		img = imread(trainingSketches1[i],0);
-		trainingSketchesDescriptors1[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(trainingSketchesDescriptors1[i]) = temp.clone();
-	}
+	trainingSketchesDescriptors1.insert(trainingSketchesDescriptors1.end(), sketchesDescriptors.begin(), sketchesDescriptors.begin()+nTraining/2);
+	trainingPhotosDescriptors1.insert(trainingPhotosDescriptors1.end(), photosDescriptors.begin(), photosDescriptors.begin()+nTraining/2);
+	trainingSketchesDescriptors2.insert(trainingSketchesDescriptors2.end(), sketchesDescriptors.begin()+nTraining/2, sketchesDescriptors.begin()+nTraining);
+	trainingPhotosDescriptors2.insert(trainingPhotosDescriptors2.end(), photosDescriptors.begin()+nTraining/2, photosDescriptors.begin()+nTraining);
 	
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTraining1; i++){
-		img = imread(trainingPhotos1[i],0);
-		trainingPhotosDescriptors1[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(trainingPhotosDescriptors1[i]) = temp.clone();
-	}
-
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTraining2; i++){
-		img = imread(trainingSketches2[i],0);
-		trainingSketchesDescriptors2[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(trainingSketchesDescriptors2[i]) = temp.clone();
-	}
-	
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTraining2; i++){
-		img = imread(trainingPhotos2[i],0);
-		trainingPhotosDescriptors2[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(trainingPhotosDescriptors2[i]) = temp.clone();
-	}
+	uint nTraining1 = trainingPhotosDescriptors1.size(),
+	nTraining2 = trainingPhotosDescriptors2.size();
 	
 	//testing
-	cout << "extract descriptors from testing set" << endl;
-	vector<Mat*> testingSketchesDescriptors(nTestingSketches), testingPhotosDescriptors(nTestingPhotos);
+	vector<Mat*> testingSketchesDescriptors, testingPhotosDescriptors;
 	
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTestingSketches; i++){
-		img = imread(testingSketches[i],0);
-		testingSketchesDescriptors[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(testingSketchesDescriptors[i]) = temp.clone();
-	}
+	testingSketchesDescriptors.insert(testingSketchesDescriptors.end(), sketchesDescriptors.begin()+nTraining, sketchesDescriptors.end());
+	testingPhotosDescriptors.insert(testingPhotosDescriptors.end(), photosDescriptors.begin()+nTraining, photosDescriptors.end());
+	testingPhotosDescriptors.insert(testingPhotosDescriptors.end(), extraDescriptors.begin(), extraDescriptors.end());
 	
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTestingPhotos; i++){
-		img = imread(testingPhotos[i],0);
-		testingPhotosDescriptors[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(testingPhotosDescriptors[i]) = temp.clone();
-	}
-	
+	uint nTestingSketches = testingSketchesDescriptors.size(),
+	nTestingPhotos = testingPhotosDescriptors.size();
 	
 	PCA pca;
 	LDA lda;
@@ -147,7 +112,7 @@ int main(int argc, char** argv)
 	vector<Mat*> testingSketchesDescriptorsBag(nTestingSketches), testingPhotosDescriptorsBag(nTestingPhotos), 
 	trainingPhotosDescriptors1Temp(nTraining1), trainingSketchesDescriptors1Temp(nTraining1);
 	
-	for(int b=0; b<30; b++){
+	for(int b=0; b<200; b++){
 		
 		vector<int> bag_indexes = gen_bag(154, 0.1);
 		
@@ -197,7 +162,7 @@ int main(int argc, char** argv)
 			instance = X.col(i);
 			add(meanX, instance, meanX);
 		}
-			
+		
 		// calculate total mean
 		meanX.convertTo(meanX, CV_32F, 1.0/static_cast<double>(X.cols));
 		
@@ -206,12 +171,6 @@ int main(int argc, char** argv)
 			Mat c_i = X.col(i);
 			subtract(c_i, meanX.reshape(1,dim), c_i);
 		}
-		
-		
-		//crio uma matriz com os descritores que saem da bag
-		//aplico uma pca com variancia de .99
-		//aplico a lda
-		cout << "training pca-lda" << endl;
 		
 		pca.computeVar(X, Mat(), CV_PCA_DATA_AS_COL, .99);
 		
@@ -229,8 +188,6 @@ int main(int argc, char** argv)
 			temp = bag(temp, bag_indexes, 154);
 			temp = k.projectProbe(temp);
 			temp = projectionMatrix.t()*(temp-meanX);
-			//temp = lda.project(pca.project(temp-meanXs));
-			//normalize(temp, temp, 1);
 			if(b==0){
 				testingSketchesDescriptorsBag[i] = new Mat();
 				*(testingSketchesDescriptorsBag[i]) = temp.clone();
@@ -246,8 +203,6 @@ int main(int argc, char** argv)
 			temp = bag(temp, bag_indexes, 154);
 			temp = k.projectGallery(temp);
 			temp = projectionMatrix.t()*(temp-meanX);
-			//temp = lda.project(pca.project(temp-meanXp));
-			//normalize(temp, temp, 1);
 			if(b==0){
 				testingPhotosDescriptorsBag[i] = new Mat();
 				*(testingPhotosDescriptorsBag[i]) = temp.clone();
@@ -256,10 +211,6 @@ int main(int argc, char** argv)
 				vconcat(*(testingPhotosDescriptorsBag[i]), temp, *(testingPhotosDescriptorsBag[i]));
 			}
 		}
-		
-		cerr << "calculating distances bag: " << b << endl;
-		
-		
 	}
 	
 	Mat distancesL2 = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
@@ -273,8 +224,12 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	FileStorage file1("kernelproto-prs-cufs-gaussian-haog-l2.xml", FileStorage::WRITE);
-	FileStorage file2("kernelproto-prs-cufs-gaussian-haog-cosine.xml", FileStorage::WRITE);
+	string prefixe = "kernelproto-prs-" + to_string(nTraining) + database + filter + descriptor;
+	string file1name =  prefixe + string("l2-") + to_string(count) + string(".xml");
+	string file2name = prefixe + string("cosine-") + to_string(count) + string(".xml");
+	
+	FileStorage file1(file1name, FileStorage::WRITE);
+	FileStorage file2(file2name, FileStorage::WRITE);
 	
 	file1 << "distanceMatrix" << distancesL2;
 	file2 << "distanceMatrix" << distancesCosine;

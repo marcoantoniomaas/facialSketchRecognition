@@ -23,8 +23,8 @@ int main(int argc, char** argv)
 	//loadImages(argv[7], extraPhotos);
 	
 	uint nPhotos = photos.size(),
-		nSketches = sketches.size(),
-		nExtra = extraPhotos.size();
+	nSketches = sketches.size(),
+	nExtra = extraPhotos.size();
 	
 	uint nTraining = 2*nPhotos/3;
 	
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
 	vector<int> labels;
 	
 	uint nTestingSketches = testingSketchesDescriptors.size(),
-		nTestingPhotos = testingPhotosDescriptors.size();
+	nTestingPhotos = testingPhotosDescriptors.size();
 	
 	for(uint i=0; i<nTraining; i++){
 		labels.push_back(i);

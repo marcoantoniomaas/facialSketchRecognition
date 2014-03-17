@@ -11,6 +11,9 @@ int main(int argc, char** argv)
 {
 	string filter = "None";
 	string descriptor = "HAOG";
+	string database = "CUFSF";
+	
+	int count = 0;
 	
 	vector<string> testingPhotos, testingSketches, extraPhotos, photos, sketches;
 	
@@ -81,9 +84,13 @@ int main(int argc, char** argv)
 	}
 	
 	
-	FileStorage file1("haog-cufsf-chi.xml", FileStorage::WRITE);
-	FileStorage file2("haog-cufsf-l2.xml", FileStorage::WRITE);
-	FileStorage file3("haog-cufsf-cosine.xml", FileStorage::WRITE);
+	string file1name = descriptor + filter + database + string("chi") + to_string(count) + string(".xml");
+	string file2name = descriptor + filter + database + string("l2") + to_string(count) + string(".xml");
+	string file3name = descriptor + filter + database + string("cosine") + to_string(count) + string(".xml");
+	
+	FileStorage file1(file1name, FileStorage::WRITE);
+	FileStorage file2(file2name, FileStorage::WRITE);
+	FileStorage file3(file3name, FileStorage::WRITE);
 	
 	file1 << "distanceMatrix" << distancesChi;
 	file2 << "distanceMatrix" << distancesL2;

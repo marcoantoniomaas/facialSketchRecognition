@@ -13,103 +13,89 @@ int main(int argc, char** argv)
 	
 	string filter = "Gaussian";
 	string descriptor = "HAOG";
+	string database = "CUFSF";
+	int count = 0;
 	
-	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos, vphotos, vsketches;
+	vector<string> extraPhotos, photos, sketches;
 	
-	loadImages(argv[1], vphotos);
-	loadImages(argv[2], vsketches);
-	//loadImages(argv[3], testingPhotos);
-	//loadImages(argv[4], testingSketches);
-	//loadImages(argv[5], extraPhotos);
+	loadImages(argv[1], photos);
+	loadImages(argv[2], sketches);
+	//loadImages(argv[7], extraPhotos);
 	
-	auto seed = unsigned (0);
+	uint nPhotos = photos.size(),
+		nSketches = sketches.size(),
+		nExtra = extraPhotos.size();
 	
-	srand (seed);
-	random_shuffle (vsketches.begin(), vsketches.end());
-	srand (seed);
-	random_shuffle (vphotos.begin(), vphotos.end());
+	uint nTraining = 2*nPhotos/3;
 	
-	int tam = vphotos.size();
+	cout << "Read " << nSketches << " sketches." << endl;
+	cout << "Read " << nPhotos + nExtra << " photos." << endl;
 	
-	trainingPhotos.insert(trainingPhotos.end(),vphotos.begin(),vphotos.begin()+2*tam/3);
-	trainingSketches.insert(trainingSketches.end(),vsketches.begin(),vsketches.begin()+2*tam/3);
-	testingPhotos.insert(testingPhotos.end(),vphotos.begin()+2*tam/3,vphotos.begin()+tam);
-	testingSketches.insert(testingSketches.end(),vsketches.begin()+2*tam/3,vsketches.begin()+tam);
-	
-	//testingPhotos.insert(testingPhotos.end(),extraPhotos.begin(),extraPhotos.begin()+10000);
-	
-	if(trainingPhotos.size()!=trainingSketches.size()){
-		cerr << "Training photos and sketches sets has different sizes" << endl;
-		return -1;
-	}
-	
-	uint nTraining = (uint)trainingPhotos.size();
-	uint nTestingSketches = testingSketches.size();
-	uint nTestingPhotos = testingPhotos.size();
-	
-	cout << nTraining << " pairs to training." << endl;
-	cout << nTestingSketches << " sketches to verify." << endl;
-	cout << nTestingPhotos << " photos on the gallery" << endl;
+	vector<Mat*> sketchesDescriptors(nSketches), photosDescriptors(nPhotos), extraDescriptors(nExtra);
 	
 	Mat img, temp;
+	
 	int size=32, delta=16;
 	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nSketches; i++){
+		img = imread(sketches[i],0);
+		sketchesDescriptors[i] = new Mat();
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		*(sketchesDescriptors[i]) = temp.clone();
+	}
+	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nPhotos; i++){
+		img = imread(photos[i],0);
+		photosDescriptors[i] = new Mat();
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		*(photosDescriptors[i]) = temp.clone();
+	}
+	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nExtra; i++){
+		img = imread(extraPhotos[i],0);
+		extraDescriptors[i] = new Mat();
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		*(extraDescriptors[i]) = temp.clone();
+	}
+	
+	auto seed = unsigned(0);
+	
+	srand(seed);
+	random_shuffle(sketches.begin(), sketches.end());
+	srand(seed);
+	random_shuffle(photos.begin(), photos.end());
+	
 	//training
-	vector<Mat*> trainingSketchesDescriptors(nTraining), trainingPhotosDescriptors(nTraining);
+	vector<Mat*> trainingSketchesDescriptors, trainingPhotosDescriptors;
 	
-	cout << "extract descriptors from training set" << endl;
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTraining; i++){
-		img = imread(trainingSketches[i],0);
-		trainingSketchesDescriptors[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(trainingSketchesDescriptors[i]) = temp.clone();
-	}
-	
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTraining; i++){
-		img = imread(trainingPhotos[i],0);
-		trainingPhotosDescriptors[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(trainingPhotosDescriptors[i]) = temp.clone();
-	}
+	trainingSketchesDescriptors.insert(trainingSketchesDescriptors.end(), sketchesDescriptors.begin(), sketchesDescriptors.begin()+nTraining);
+	trainingPhotosDescriptors.insert(trainingPhotosDescriptors.end(), photosDescriptors.begin(), photosDescriptors.begin()+nTraining);
 	
 	//testing
-	cout << "extract descriptors from testing set" << endl;
-	vector<Mat*> testingSketchesDescriptors(nTestingSketches), testingPhotosDescriptors(nTestingPhotos);
+	vector<Mat*> testingSketchesDescriptors, testingPhotosDescriptors;
 	
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTestingSketches; i++){
-		img = imread(testingSketches[i],0);
-		testingSketchesDescriptors[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(testingSketchesDescriptors[i]) = temp.clone();
-	}
-	
-	#pragma omp parallel for private(img, temp)
-	for(uint i=0; i<nTestingPhotos; i++){
-		img = imread(testingPhotos[i],0);
-		testingPhotosDescriptors[i] = new Mat();
-		
-		#pragma omp critical
-		temp = extractDescriptors(img, size, delta, filter, descriptor);
-		
-		*(testingPhotosDescriptors[i]) = temp.clone();
-	}
-	
+	testingSketchesDescriptors.insert(testingSketchesDescriptors.end(), sketchesDescriptors.begin()+nTraining, sketchesDescriptors.end());
+	testingPhotosDescriptors.insert(testingPhotosDescriptors.end(), photosDescriptors.begin()+nTraining, photosDescriptors.end());
+	testingPhotosDescriptors.insert(testingPhotosDescriptors.end(), extraDescriptors.begin(), extraDescriptors.end());
 	
 	PCA pca;
 	LDA lda;
 	vector<int> labels;
+	
+	uint nTestingSketches = testingSketchesDescriptors.size(),
+		nTestingPhotos = testingPhotosDescriptors.size();
 	
 	for(uint i=0; i<nTraining; i++){
 		labels.push_back(i);
@@ -119,7 +105,7 @@ int main(int argc, char** argv)
 	//bags
 	vector<Mat*> testingSketchesDescriptorsBag(nTestingSketches), testingPhotosDescriptorsBag(nTestingPhotos);
 	
-	for(int b=0; b<30; b++){
+	for(int b=0; b<200; b++){
 		
 		vector<int> bag_indexes = gen_bag(154, 0.1);
 		
@@ -186,11 +172,6 @@ int main(int argc, char** argv)
 			subtract(c_i, meanXp.reshape(1,dim), c_i);
 		}
 		
-		//crio uma matriz com os descritores que saem da bag
-		//aplico uma pca com variancia de .99
-		//aplico a lda
-		cout << "training pca-lda" << endl;
-		
 		if(meanX.total() >= nTraining)
 			pca(X, Mat(), CV_PCA_DATA_AS_COL, nTraining-1);
 		else
@@ -209,8 +190,6 @@ int main(int argc, char** argv)
 			temp = *(testingSketchesDescriptors[i]);
 			temp = bag(temp, bag_indexes, 154);
 			temp = projectionMatrix.t()*(temp-meanX);
-			//temp = lda.project(pca.project(temp-meanXs));
-			//normalize(temp, temp, 1);
 			if(b==0){
 				testingSketchesDescriptorsBag[i] = new Mat();
 				*(testingSketchesDescriptorsBag[i]) = temp.clone();
@@ -225,8 +204,6 @@ int main(int argc, char** argv)
 			temp = *(testingPhotosDescriptors[i]);
 			temp = bag(temp, bag_indexes, 154);
 			temp = projectionMatrix.t()*(temp-meanX);
-			//temp = lda.project(pca.project(temp-meanXp));
-			//normalize(temp, temp, 1);
 			if(b==0){
 				testingPhotosDescriptorsBag[i] = new Mat();
 				*(testingPhotosDescriptorsBag[i]) = temp.clone();
@@ -235,10 +212,6 @@ int main(int argc, char** argv)
 				vconcat(*(testingPhotosDescriptorsBag[i]), temp, *(testingPhotosDescriptorsBag[i]));
 			}
 		}
-		
-		cerr << "calculating distances bag: " << b << endl;
-		
-		
 	}
 	
 	Mat distancesL2 = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
@@ -252,8 +225,12 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	FileStorage file1("kernelproto-drs-cufsf-gaussian-haog-l2.xml", FileStorage::WRITE);
-	FileStorage file2("kernelproto-drs-cufsf-gaussian-haog-cosine.xml", FileStorage::WRITE);
+	string prefixe = "kernelproto-drs-" + to_string(nTraining) + database + filter + descriptor;
+	string file1name =  prefixe + string("l2-") + to_string(count) + string(".xml");
+	string file2name = prefixe + string("cosine-") + to_string(count) + string(".xml");
+	
+	FileStorage file1(file1name, FileStorage::WRITE);
+	FileStorage file2(file2name, FileStorage::WRITE);
 	
 	file1 << "distanceMatrix" << distancesL2;
 	file2 << "distanceMatrix" << distancesCosine;

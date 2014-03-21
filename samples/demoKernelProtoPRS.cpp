@@ -12,14 +12,14 @@ using namespace cv;
 int main(int argc, char** argv)
 {
 	string filter = "Gaussian";
-	string descriptor = "HAOG";
-	string database = "CUFSF";
+	string descriptor = "SIFT";
+	string database = "CUFS";
 	int count = 0;
 	
 	vector<string> extraPhotos, photos, sketches;
 	
-	loadImages(argv[1], photos);
-	loadImages(argv[2], sketches);
+	loadImages(argv[3], photos);
+	loadImages(argv[4], sketches);
 	//loadImages(argv[7], extraPhotos);
 	
 	uint nPhotos = photos.size(),

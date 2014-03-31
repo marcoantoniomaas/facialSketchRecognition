@@ -130,7 +130,7 @@ inline void extractHOG_(InputArray _src, OutputArray _dst){
 	_dst.create(1, 9, CV_32FC1);
 	Mat dst = _dst.getMat();
 	dst.setTo(0);
-
+	
 	Mat grad_x, grad_y, magn, theta;
 	
 	Sobel(src, grad_x, CV_32F, 1, 0);
@@ -160,7 +160,7 @@ inline void extractHAOG_(InputArray _src, OutputArray _dst){
 	_dst.create(1, 9, CV_32FC1);
 	Mat dst = _dst.getMat();
 	dst.setTo(0);
-
+	
 	Mat grad_x, grad_y, magn, theta;
 	
 	Sobel(src, grad_x, CV_32F, 1, 0);

@@ -13,7 +13,7 @@ List of Methods and Descriptors
 * SIFT
 * LBP
 * MLBP
-* Gabor Shape
+* GS
 * LRBP
 
 2. Methods

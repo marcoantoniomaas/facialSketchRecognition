@@ -12,14 +12,14 @@ using namespace cv;
 class Kernel
 {
 private:
-  vector<Mat*> trainingPhotosDescriptors, trainingSketchesDescriptors;
-  Mat Kp, Kg, R, mean;
+	vector<Mat*> trainingPhotosDescriptors, trainingSketchesDescriptors;
+	Mat Kp, Kg, R, mean;
 public:
-  Kernel(vector<Mat*>& trainingPhotosDescriptors,vector<Mat*>& trainingSketchesDescriptors);
-  virtual ~Kernel();
-  void compute();
-  Mat projectGallery(Mat descriptor);
-  Mat projectProbe(Mat descriptor);
+	Kernel(vector<Mat*>& trainingPhotosDescriptors,vector<Mat*>& trainingSketchesDescriptors);
+	virtual ~Kernel();
+	void compute();
+	Mat projectGallery(Mat descriptor);
+	Mat projectProbe(Mat descriptor);
 };
 
 #endif

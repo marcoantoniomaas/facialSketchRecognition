@@ -82,10 +82,10 @@ int main(int argc, char** argv)
 	
 	cout << "VRatFAR <- c(";
 	for (float far : {
-	pow(10,-3), pow(10,-2.75), pow(10,-2.5), pow(10,-2.25), 
-	pow(10,-2), pow(10,-1.75), pow(10,-1.5), pow(10,-1.25), 
-	pow(10,-1), pow(10,-0.75), pow(10,-0.5), pow(10,-0.25), 
-	pow(10,0)}){
+		pow(10,-3), pow(10,-2.75), pow(10,-2.5), pow(10,-2.25), 
+		 pow(10,-2), pow(10,-1.75), pow(10,-1.5), pow(10,-1.25), 
+		 pow(10,-1), pow(10,-0.75), pow(10,-0.5), pow(10,-0.25), 
+		 pow(10,0)}){
 		
 		int n = far*impostors.size()-1;
 		double threshold;
@@ -98,9 +98,9 @@ int main(int argc, char** argv)
 			threshold = *it;
 		}
 		cout << (float)count_if(realPairs.begin(), realPairs.end(), [threshold](double x) {return x <= threshold;})/distances.rows << ",";
-	}
-	cout << "\b";
-	cout << ")" << endl;
-	
-	return 0;
+		 }
+		 cout << "\b";
+		 cout << ")" << endl;
+		 
+		 return 0;
 }

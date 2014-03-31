@@ -13,15 +13,19 @@ int main(int argc, char** argv)
 	string descriptor = "HAOG";
 	string database = "CUFSF";
 	
+	uint nTraining = 500;
 	int count = 0;
 	
-	vector<string> testingPhotos, testingSketches, extraPhotos, photos, sketches;
+	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos, photos, sketches;
 	
 	loadImages(argv[1], photos);
 	loadImages(argv[2], sketches);
 	
-	testingPhotos.insert(testingPhotos.end(),photos.begin(),photos.end());
-	testingSketches.insert(testingSketches.end(),sketches.begin(),sketches.end());
+	
+	trainingPhotos.insert(trainingPhotos.end(), photos.begin(),photos.begin()+nTraining);
+	trainingSketches.insert(trainingSketches.end(), sketches.begin(), sketches.begin()+nTraining);
+	testingPhotos.insert(testingPhotos.end(),photos.begin()+nTraining,photos.end());
+	testingSketches.insert(testingSketches.end(),sketches.begin()+nTraining,sketches.end());
 	
 	//testingPhotos.insert(testingPhotos.end(),extraPhotos.begin(),extraPhotos.begin()+10000);
 	
@@ -35,19 +39,76 @@ int main(int argc, char** argv)
 	int size = 32;
 	int delta = size/2;
 	
+	//training 
+	vector<int> labels;
+	
+	for(int i=0; i<1000; i++)
+		labels.push_back(i%500);
+	
+	int dim = 0;
+	
+	if(descriptor=="HOG" || descriptor=="HAOG")
+		dim = 9;
+	else if(descriptor=="SIFT")
+		dim = 128;
+	else if(descriptor=="MLBP")
+		dim = 236;
+	
+	Mat data = Mat::zeros(2*nTraining, 154*dim, CV_32F);
+	
+	PCA pca;
+	LDA lda;
+	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nTraining; i++){
+		img = imread(trainingSketches[i],0);
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		temp = temp.t();
+		
+		temp.copyTo(data.row(i));
+		
+		cout << "trainingSketches " << i << endl;
+	}
+	
+	#pragma omp parallel for private(img, temp)
+	for(uint i=0; i<nTraining; i++){
+		img = imread(trainingPhotos[i],0);
+		
+		#pragma omp critical
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
+		
+		temp = temp.t();
+		
+		temp.copyTo(data.row(i+nTraining));
+		
+		cout << "trainingPhotos " << i << endl;
+	}
+	
+	
+	if(nTraining>0){
+		pca(data, Mat(), CV_PCA_DATA_AS_ROW, 200);
+		lda.compute(pca.project(data), labels);
+	}
+	
 	//testing
 	vector<Mat*> testingSketchesDescriptors(nTestingSketches), testingPhotosDescriptors(nTestingPhotos);
 	
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingSketches; i++){
 		img = imread(testingSketches[i],0);
-		//resize(img, img, Size(64,80));
+		
 		testingSketchesDescriptors[i] = new Mat();
 		
 		#pragma omp critical
 		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
-		*(testingSketchesDescriptors[i]) =temp.clone();
+		if(nTraining>0)
+			*(testingSketchesDescriptors[i]) = lda.project(pca.project(temp.t()));
+		else
+			*(testingSketchesDescriptors[i]) = temp.clone();
 		
 		cout << "testingSketches " << i << endl;
 	}
@@ -55,13 +116,16 @@ int main(int argc, char** argv)
 	#pragma omp parallel for private(img, temp)
 	for(uint i=0; i<nTestingPhotos; i++){
 		img = imread(testingPhotos[i],0);
-		//resize(img, img, Size(64,80));
+		
 		testingPhotosDescriptors[i] = new Mat();
 		
 		#pragma omp critical
 		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
-		*(testingPhotosDescriptors[i]) = temp.clone();
+		if(nTraining>0)
+			*(testingPhotosDescriptors[i]) = lda.project(pca.project(temp.t()));
+		else
+			*(testingPhotosDescriptors[i]) = temp.clone();
 		
 		cout << "testingPhotos " << i << endl;
 		//cout << *(testingPhotosDescriptors[i]) << endl;
@@ -84,9 +148,9 @@ int main(int argc, char** argv)
 	}
 	
 	
-	string file1name = descriptor + filter + database + string("chi") + to_string(count) + string(".xml");
-	string file2name = descriptor + filter + database + string("l2") + to_string(count) + string(".xml");
-	string file3name = descriptor + filter + database + string("cosine") + to_string(count) + string(".xml");
+	string file1name = descriptor + filter + database + to_string(nTraining) + string("chi") + to_string(count) + string(".xml");
+	string file2name = descriptor + filter + database + to_string(nTraining) + string("l2") + to_string(count) + string(".xml");
+	string file3name = descriptor + filter + database + to_string(nTraining) + string("cosine") + to_string(count) + string(".xml");
 	
 	FileStorage file1(file1name, FileStorage::WRITE);
 	FileStorage file2(file2name, FileStorage::WRITE);

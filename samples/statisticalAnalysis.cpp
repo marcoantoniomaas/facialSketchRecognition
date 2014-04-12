@@ -97,7 +97,9 @@ int main(int argc, char** argv)
 		else{
 			threshold = *it;
 		}
-		cout << (float)count_if(realPairs.begin(), realPairs.end(), [threshold](double x) {return x <= threshold;})/distances.rows << ",";
+		int VR = count_if(realPairs.begin(), realPairs.end(), [threshold](double x) {return x <= threshold;});
+		int FR = count_if(impostors.begin(), impostors.end(), [threshold](double x) {return x <= threshold;});
+		cout << ((float)VR/distances.rows)*((float)n/FR) << ",";
 		 }
 		 cout << "\b";
 		 cout << ")" << endl;

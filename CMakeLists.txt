@@ -16,6 +16,12 @@ if (OPENMP_FOUND)
 	message("OpenMP Found") 
 endif()
 
+## Compiler flags
+if(CMAKE_COMPILER_IS_GNUCXX)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")        ## Optimize
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s")  ## Strip binary
+endif()
+
 #set(OpenCV_DIR /home/marco/opencv-2.4.6.1)
 
 #---------------------------------

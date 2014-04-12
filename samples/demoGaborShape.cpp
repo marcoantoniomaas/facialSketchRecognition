@@ -68,13 +68,20 @@ int main(int argc, char** argv)
 	string database = "CUFSF";
 	
 	uint nTraining = 500;
-	int count = 0;
+	uint pcaDim = 700;
+	uint count = 1;
 	
 	vector<string> trainingPhotos, trainingSketches, testingPhotos, testingSketches, extraPhotos, photos, sketches;
 	
 	loadImages(argv[1], photos);
 	loadImages(argv[2], sketches);
 	
+	auto seed = unsigned(count);
+	
+	srand (seed);
+	random_shuffle (sketches.begin(), sketches.end());
+	srand (seed);
+	random_shuffle (photos.begin(), photos.end());
 	
 	trainingPhotos.insert(trainingPhotos.end(), photos.begin(),photos.begin()+nTraining);
 	trainingSketches.insert(trainingSketches.end(), sketches.begin(), sketches.begin()+nTraining);
@@ -130,9 +137,8 @@ int main(int argc, char** argv)
 		cout << "trainingPhotos " << i << endl;
 	}
 	
-	
 	if(nTraining>0){
-		pca(data, Mat(), CV_PCA_DATA_AS_ROW, 200);
+		pca(data, Mat(), CV_PCA_DATA_AS_ROW, pcaDim);
 		lda.compute(pca.project(data), labels);
 	}
 	
@@ -189,9 +195,9 @@ int main(int argc, char** argv)
 	}
 	
 	
-	string file1name = descriptor + database + to_string(nTraining) + string("chi") + to_string(count) + string(".xml");
-	string file2name = descriptor + database + to_string(nTraining) + string("l2") + to_string(count) + string(".xml");
-	string file3name = descriptor + database + to_string(nTraining) + string("cosine") + to_string(count) + string(".xml");
+	string file1name = descriptor + database + to_string(nTraining) + "-" + to_string(pcaDim) + string("chi") + to_string(count) + string(".xml");
+	string file2name = descriptor + database + to_string(nTraining) + "-" + to_string(pcaDim) + string("l2") + to_string(count) + string(".xml");
+	string file3name = descriptor + database + to_string(nTraining) + "-" + to_string(pcaDim) + string("cosine") + to_string(count) + string(".xml");
 	
 	FileStorage file1(file1name, FileStorage::WRITE);
 	FileStorage file2(file2name, FileStorage::WRITE);

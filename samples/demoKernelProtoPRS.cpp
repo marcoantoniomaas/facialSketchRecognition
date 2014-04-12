@@ -213,29 +213,34 @@ int main(int argc, char** argv)
 		}
 	}
 	
+	Mat distancesChi = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	Mat distancesL2 = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	Mat distancesCosine = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){
 		for(uint j=0; j<nTestingPhotos; j++){
+			distancesChi.at<double>(i,j) = chiSquareDistance(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j]));
 			distancesL2.at<double>(i,j) = norm(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j]));
 			distancesCosine.at<double>(i,j) = abs(1-cosineDistance(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j])));
 		}
 	}
 	
-	string prefixe = "kernelproto-prs-" + to_string(nTraining) + database + filter + descriptor;
-	string file1name =  prefixe + string("l2-") + to_string(count) + string(".xml");
-	string file2name = prefixe + string("cosine-") + to_string(count) + string(".xml");
+	string file1name = "kernel-prs-" + descriptor + database + to_string(nTraining) + string("chi") + to_string(count) + string(".xml");
+	string file2name = "kernel-prs-" + descriptor + database + to_string(nTraining) + string("l2") + to_string(count) + string(".xml");
+	string file3name = "kernel-prs-" + descriptor + database + to_string(nTraining) + string("cosine") + to_string(count) + string(".xml");
 	
 	FileStorage file1(file1name, FileStorage::WRITE);
 	FileStorage file2(file2name, FileStorage::WRITE);
+	FileStorage file3(file3name, FileStorage::WRITE);
 	
-	file1 << "distanceMatrix" << distancesL2;
-	file2 << "distanceMatrix" << distancesCosine;
+	file1 << "distanceMatrix" << distancesChi;
+	file2 << "distanceMatrix" << distancesL2;
+	file3 << "distanceMatrix" << distancesCosine;
 	
 	file1.release();
 	file2.release();
+	file3.release();
 	
 	return 0;
 }

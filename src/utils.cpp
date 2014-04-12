@@ -50,7 +50,7 @@ inline void chiSquareDistance_(InputArray _a, InputArray _b, double &dist){
 	Mat b = _b.getMat();
 	
 	for (int i = 0; i < a.total(); i++){
-		double temp = pow((a.at<_Tp>(i) - b.at<_Tp>(i)),2)/(a.at<_Tp>(i) + b.at<_Tp>(i));
+		double temp = pow((a.at<_Tp>(i) - b.at<_Tp>(i)),2)/(abs(a.at<_Tp>(i)) + abs(b.at<_Tp>(i)));
 		if(temp==temp)
 			dist += temp;
 	}
@@ -161,7 +161,7 @@ Mat extractDescriptors(InputArray src, int size, int delta, string filter, strin
 	int n = (w-size)/delta+1, m=(h-size)/delta+1;
 	int point = 0;
 	
-	int descSize;
+	int descSize = 0;
 	
 	if(descriptor == "SIFT")
 		descSize = 128;

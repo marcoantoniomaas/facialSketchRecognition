@@ -14,7 +14,7 @@ int main(int argc, char** argv)
 	string filter = "Gaussian";
 	string descriptor = "SIFT";
 	string database = "CUFS";
-	int count = 0;
+	uint count = 0;
 	
 	vector<string> extraPhotos, photos, sketches;
 	
@@ -70,12 +70,12 @@ int main(int argc, char** argv)
 		*(extraDescriptors[i]) = temp.clone();
 	}
 	
-	auto seed = unsigned(0);
+	auto seed = unsigned(count);
 	
 	srand(seed);
-	random_shuffle(sketches.begin(), sketches.end());
+	random_shuffle(sketchesDescriptors.begin(), sketchesDescriptors.end());
 	srand(seed);
-	random_shuffle(photos.begin(), photos.end());
+	random_shuffle(photosDescriptors.begin(), photosDescriptors.end());
 	
 	//training
 	vector<Mat*> trainingSketchesDescriptors1, trainingPhotosDescriptors1, 
@@ -116,7 +116,7 @@ int main(int argc, char** argv)
 		
 		vector<int> bag_indexes = gen_bag(154, 0.1);
 		
-		#pragma omp parallel for private(img, temp)
+		#pragma omp parallel for private(temp)
 		for(uint i=0; i<nTraining1; i++){
 			temp = *(trainingSketchesDescriptors1[i]);
 			temp = bag(temp, bag_indexes, 154);
@@ -124,7 +124,7 @@ int main(int argc, char** argv)
 			*(trainingSketchesDescriptors1Temp[i]) = temp.clone();
 		}
 		
-		#pragma omp parallel for private(img, temp)
+		#pragma omp parallel for private(temp)
 		for(uint i=0; i<nTraining1; i++){
 			temp = *(trainingPhotosDescriptors1[i]);
 			temp = bag(temp, bag_indexes, 154);
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
 		
 		Mat X(dim, 2*nTraining2, CV_32F);
 		
-		#pragma omp parallel for private(img, temp)
+		#pragma omp parallel for private(temp)
 		for(uint i=0; i<nTraining2; i++){
 			temp = *(trainingSketchesDescriptors2[i]);
 			temp = bag(temp, bag_indexes, 154);
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
 			temp.copyTo(X.col(i));
 		}
 		
-		#pragma omp parallel for private(img, temp)
+		#pragma omp parallel for private(temp)
 		for(uint i=0; i<nTraining2; i++){
 			temp = *(trainingPhotosDescriptors2[i]);
 			temp = bag(temp, bag_indexes, 154);
@@ -182,7 +182,7 @@ int main(int argc, char** argv)
 		Mat projectionMatrix = (W2.t()*W1.t()).t();
 		
 		//testing
-		#pragma omp parallel for private(img, temp)
+		#pragma omp parallel for private(temp)
 		for(uint i=0; i<nTestingSketches; i++){
 			temp = *(testingSketchesDescriptors[i]);
 			temp = bag(temp, bag_indexes, 154);
@@ -197,7 +197,7 @@ int main(int argc, char** argv)
 			}
 		}
 		
-		#pragma omp parallel for private(img, temp)
+		#pragma omp parallel for private(temp)
 		for(uint i=0; i<nTestingPhotos; i++){
 			temp = *(testingPhotosDescriptors[i]);
 			temp = bag(temp, bag_indexes, 154);

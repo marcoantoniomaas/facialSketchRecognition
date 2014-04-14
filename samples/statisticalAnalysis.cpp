@@ -27,7 +27,19 @@ int main(int argc, char** argv)
 	}
 	
 	vector<int> rank(distances.rows);
+	
 	multiset<double> realPairs, impostors;
+	
+	for(int i=0; i<distances.rows; i++) {
+		Mat xi = distances.row(i);
+		// mean and standard deviation
+		//Scalar cvMean;
+		//Scalar cvStddev;
+		//meanStdDev(c_i, cvMean, cvStddev);
+		//c_i = (c_i-cvMean);
+		//c_i = c_i.mul(Mat::ones(c_i.size(), c_i.type()),1/cvStddev[0]);
+		normalize(xi, xi, 1, 0, NORM_MINMAX);
+	}
 	
 	for(int i=0; i<distances.cols; i++) {
 		Mat xi = distances.col(i);
@@ -37,7 +49,7 @@ int main(int argc, char** argv)
 		//meanStdDev(c_i, cvMean, cvStddev);
 		//c_i = (c_i-cvMean);
 		//c_i = c_i.mul(Mat::ones(c_i.size(), c_i.type()),1/cvStddev[0]);
-		normalize(xi, xi, 1, 0, NORM_MINMAX);
+		//normalize(xi, xi, 1, 0, NORM_MINMAX);
 	}
 	
 	for(int i=0; i<distances.rows; i++){
@@ -50,7 +62,6 @@ int main(int argc, char** argv)
 		}
 		//cout << i+1 << ": " << rank[i] << endl;
 	}
-	
 	// mean and standard deviation
 	//Scalar cvMean;
 	//Scalar cvStddev;
@@ -99,7 +110,7 @@ int main(int argc, char** argv)
 		}
 		int VR = count_if(realPairs.begin(), realPairs.end(), [threshold](double x) {return x <= threshold;});
 		int FR = count_if(impostors.begin(), impostors.end(), [threshold](double x) {return x <= threshold;});
-		cout << ((float)VR/distances.rows)*((float)n/FR) << ",";
+		cout << ((float)VR/distances.rows)*round(((float)n/FR)*100000)/100000.0 << ",";
 		 }
 		 cout << "\b";
 		 cout << ")" << endl;

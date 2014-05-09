@@ -1,0 +1,23 @@
+*** opencv-2.4.8-2/modules/contrib/src/lda.cpp	2013-12-27 14:09:18.000000000 -0300
+--- opencv-2.4.8/modules/contrib/src/lda.cpp	2014-02-20 19:55:00.730168882 -0300
+***************
+*** 1081,1088 ****
+      _eigenvalues = sortMatrixColumnsByIndices(_eigenvalues, sorted_indices);
+      _eigenvectors = sortMatrixColumnsByIndices(_eigenvectors, sorted_indices);
+      // and now take only the num_components and we're out!
+!     _eigenvalues = Mat(_eigenvalues, Range::all(), Range(0, _num_components));
+!     _eigenvectors = Mat(_eigenvectors, Range::all(), Range(0, _num_components));
+  }
+  
+  void LDA::compute(InputArrayOfArrays _src, InputArray _lbls) {
+--- 1081,1090 ----
+      _eigenvalues = sortMatrixColumnsByIndices(_eigenvalues, sorted_indices);
+      _eigenvectors = sortMatrixColumnsByIndices(_eigenvectors, sorted_indices);
+      // and now take only the num_components and we're out!
+!     if(_eigenvectors.cols>_num_components){
+!         _eigenvalues = Mat(_eigenvalues, Range::all(), Range(0, _num_components));
+!         _eigenvectors = Mat(_eigenvectors, Range::all(), Range(0, _num_components));
+!     }
+  }
+  
+  void LDA::compute(InputArrayOfArrays _src, InputArray _lbls) {

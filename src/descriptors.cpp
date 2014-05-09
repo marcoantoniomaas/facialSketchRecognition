@@ -21,8 +21,6 @@ int  UniformPattern59[256] = {
 
 
 //------------------------------------------------------------------------------
-// elbp
-//------------------------------------------------------------------------------
 template <typename _Tp> static
 inline void elbp_(InputArray _src, OutputArray _dst, int radius, int neighbors){
 	//get matrices
@@ -326,11 +324,6 @@ void extractLRBP(InputArray src, OutputArray dst) {
 	}
 }
 
-
-
-
-//------------------------------------------------------------------------------
-// elbp
 //------------------------------------------------------------------------------
 Mat elbp(InputArray src, int radius, int neighbors) {
 	Mat dst;

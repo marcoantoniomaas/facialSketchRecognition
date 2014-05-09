@@ -13,14 +13,14 @@ int main(int argc, char** argv)
 {
 	string filter = "Gaussian";
 	string descriptor = "SIFT";
-	string database = "CUFS";
-	uint count = 0;
+	string database = "Forensic-extra";
+	uint count = 1;
 	
 	vector<string> extraPhotos, photos, sketches;
 	
-	loadImages(argv[3], photos);
-	loadImages(argv[4], sketches);
-	//loadImages(argv[7], extraPhotos);
+	loadImages(argv[5], photos);
+	loadImages(argv[6], sketches);
+	loadImages(argv[7], extraPhotos);
 	
 	uint nPhotos = photos.size(),
 	nSketches = sketches.size(),
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 	vector<Mat*> testingSketchesDescriptorsBag(nTestingSketches), testingPhotosDescriptorsBag(nTestingPhotos), 
 	trainingPhotosDescriptors1Temp(nTraining1), trainingSketchesDescriptors1Temp(nTraining1);
 	
-	for(int b=0; b<200; b++){
+	for(int b=0; b<30; b++){
 		
 		vector<int> bag_indexes = gen_bag(154, 0.1);
 		
@@ -213,34 +213,22 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	Mat distancesChi = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
-	Mat distancesL2 = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	Mat distancesCosine = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){
 		for(uint j=0; j<nTestingPhotos; j++){
-			distancesChi.at<double>(i,j) = chiSquareDistance(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j]));
-			distancesL2.at<double>(i,j) = norm(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j]));
 			distancesCosine.at<double>(i,j) = abs(1-cosineDistance(*(testingSketchesDescriptorsBag[i]),*(testingPhotosDescriptorsBag[j])));
 		}
 	}
 	
-	string file1name = "kernel-prs-" + descriptor + database + to_string(nTraining) + string("chi") + to_string(count) + string(".xml");
-	string file2name = "kernel-prs-" + descriptor + database + to_string(nTraining) + string("l2") + to_string(count) + string(".xml");
-	string file3name = "kernel-prs-" + descriptor + database + to_string(nTraining) + string("cosine") + to_string(count) + string(".xml");
+	string file1name = "kernel-prs-" + filter + descriptor + database + to_string(nTraining) + string("cosine") + to_string(count) + string(".xml");
 	
 	FileStorage file1(file1name, FileStorage::WRITE);
-	FileStorage file2(file2name, FileStorage::WRITE);
-	FileStorage file3(file3name, FileStorage::WRITE);
 	
-	file1 << "distanceMatrix" << distancesChi;
-	file2 << "distanceMatrix" << distancesL2;
-	file3 << "distanceMatrix" << distancesCosine;
+	file1 << "distanceMatrix" << distancesCosine;
 	
 	file1.release();
-	file2.release();
-	file3.release();
 	
 	return 0;
 }

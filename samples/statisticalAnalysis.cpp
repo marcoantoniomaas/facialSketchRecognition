@@ -26,31 +26,9 @@ int main(int argc, char** argv)
 		file.release();
 	}
 	
+	cout << "The number of subject is: " << distances.rows << " x " << distances.cols << endl; 
+	
 	vector<int> rank(distances.rows);
-	
-	multiset<double> realPairs, impostors;
-	
-	for(int i=0; i<distances.rows; i++) {
-		Mat xi = distances.row(i);
-		// mean and standard deviation
-		//Scalar cvMean;
-		//Scalar cvStddev;
-		//meanStdDev(c_i, cvMean, cvStddev);
-		//c_i = (c_i-cvMean);
-		//c_i = c_i.mul(Mat::ones(c_i.size(), c_i.type()),1/cvStddev[0]);
-		normalize(xi, xi, 1, 0, NORM_MINMAX);
-	}
-	
-	for(int i=0; i<distances.cols; i++) {
-		Mat xi = distances.col(i);
-		// mean and standard deviation
-		//Scalar cvMean;
-		//Scalar cvStddev;
-		//meanStdDev(c_i, cvMean, cvStddev);
-		//c_i = (c_i-cvMean);
-		//c_i = c_i.mul(Mat::ones(c_i.size(), c_i.type()),1/cvStddev[0]);
-		//normalize(xi, xi, 1, 0, NORM_MINMAX);
-	}
 	
 	for(int i=0; i<distances.rows; i++){
 		rank[i] = 1;
@@ -58,17 +36,23 @@ int main(int argc, char** argv)
 			if(distances.at<double>(i,j)<=distances.at<double>(i,i) && i!=j){
 				rank[i]++;
 			}
-			
 		}
 		//cout << i+1 << ": " << rank[i] << endl;
 	}
-	// mean and standard deviation
-	//Scalar cvMean;
-	//Scalar cvStddev;
-	//meanStdDev(distances, cvMean, cvStddev);
 	
-	//distances = (distances-cvMean);
-	//distances = distances.mul(Mat::ones(distances.size(), distances.type()),1/cvStddev[0]);
+	cout << "rank <- c(";
+	for (int i : {1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100}){
+		cout << (float)count_if(rank.begin(), rank.end(), [i](int x) {return x <= i;})/distances.rows << ",";
+	}
+	cout << "\b";
+	cout << ")" << endl;
+	
+	for(int i=0; i<distances.rows; i++) {
+		Mat xi = distances.row(i);
+		normalize(xi, xi, 1, 0, NORM_MINMAX);
+	}
+	
+	multiset<double> realPairs, impostors;
 	
 	for(int i=0; i<distances.rows; i++){
 		for(int j=0; j<distances.cols; j++){
@@ -81,22 +65,13 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	cout << "The number of subject is: " << distances.rows << endl; 
-	
-	cout << "rank <- c(";
-	for (int i : {1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50}){
-		//cout << "Rank "<< i << ": ";
-		cout << (float)count_if(rank.begin(), rank.end(), [i](int x) {return x <= i;})/distances.rows << ",";
-	}
-	cout << "\b";
-	cout << ")" << endl;
-	
 	cout << "VRatFAR <- c(";
 	for (float far : {
 		pow(10,-3), pow(10,-2.75), pow(10,-2.5), pow(10,-2.25), 
 		 pow(10,-2), pow(10,-1.75), pow(10,-1.5), pow(10,-1.25), 
 		 pow(10,-1), pow(10,-0.75), pow(10,-0.5), pow(10,-0.25), 
-		 pow(10,0)}){
+		 pow(10,0)})
+	{
 		
 		int n = far*impostors.size()-1;
 		double threshold;
@@ -110,10 +85,11 @@ int main(int argc, char** argv)
 		}
 		int VR = count_if(realPairs.begin(), realPairs.end(), [threshold](double x) {return x <= threshold;});
 		int FR = count_if(impostors.begin(), impostors.end(), [threshold](double x) {return x <= threshold;});
-		cout << ((float)VR/distances.rows)*round(((float)n/FR)*100000)/100000.0 << ",";
-		 }
-		 cout << "\b";
-		 cout << ")" << endl;
-		 
-		 return 0;
+		cout << ((float)VR/distances.rows)*round(((float)n/FR)*10000)/10000.0 << ",";
+		
+	}
+	cout << "\b";
+	cout << ")" << endl;
+	
+	return 0;
 }

@@ -46,23 +46,23 @@ Mat extractDescriptors(InputArray src, int size, int delta){
 
 int main(int argc, char** argv)
 {
-	string filter = "-";
-	string descriptor = "-";
-	string database = "CUFSF";
-	uint descSize = 364;
-	uint count = 0;
+	string filter = "Gaussian";
+	string descriptor = "HOG";
+	string database = "CUFS-extra";
+	uint descSize = 9;
+	uint count = 1;
 	
 	vector<string> extraPhotos, photos, sketches;
 	
-	loadImages(argv[1], photos);
-	loadImages(argv[2], sketches);
+	loadImages(argv[3], photos);
+	loadImages(argv[4], sketches);
 	loadImages(argv[7], extraPhotos);
 	
 	uint nPhotos = photos.size(),
 	nSketches = sketches.size(),
 	nExtra = extraPhotos.size();
 	
-	uint nTraining = 500;//2*nPhotos/3;
+	uint nTraining = 2*nPhotos/3;
 	
 	cout << "Read " << nSketches << " sketches." << endl;
 	cout << "Read " << nPhotos + nExtra << " photos." << endl;
@@ -79,7 +79,7 @@ int main(int argc, char** argv)
 		sketchesDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(sketchesDescriptors[i]) = temp.clone();
 	}
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 		photosDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(photosDescriptors[i]) = temp.clone();
 	}
@@ -101,7 +101,7 @@ int main(int argc, char** argv)
 		extraDescriptors[i] = new Mat();
 		
 		#pragma omp critical
-		temp = extractDescriptors(img, size, delta);
+		temp = extractDescriptors(img, size, delta, filter, descriptor);
 		
 		*(extraDescriptors[i]) = temp.clone();
 	}
@@ -220,7 +220,6 @@ int main(int argc, char** argv)
 		*(projectionMatrix[i]) = W*V*U;
 	}
 	
-	
 	//testing
 	
 	vector<Mat*> testingSketchesProjection(nTestingSketches), testingPhotosProjection(nTestingPhotos);
@@ -257,34 +256,28 @@ int main(int argc, char** argv)
 		*(testingPhotosProjection[i]) = desc.clone();
 	}
 	
-	Mat distancesChi = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	Mat distancesL2 = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	Mat distancesCosine = Mat::zeros(nTestingSketches,nTestingPhotos,CV_64F);
 	
 	#pragma omp parallel for
 	for(uint i=0; i<nTestingSketches; i++){
 		for(uint j=0; j<nTestingPhotos; j++){
-			distancesChi.at<double>(i,j) = chiSquareDistance(*(testingSketchesProjection[i]),*(testingPhotosProjection[j]));
 			distancesL2.at<double>(i,j) = norm(*(testingSketchesProjection[i]),*(testingPhotosProjection[j]));
 			distancesCosine.at<double>(i,j) = abs(1-cosineDistance(*(testingSketchesProjection[i]),*(testingPhotosProjection[j])));
 		}
 	}
 	
-	string file1name = "LFDA-" + descriptor + database + to_string(nTraining) + string("chi") + to_string(count) + string(".xml");
-	string file2name = "LFDA-" + descriptor + database + to_string(nTraining) + string("l2") + to_string(count) + string(".xml");
-	string file3name = "LFDA-" + descriptor + database + to_string(nTraining) + string("cosine") + to_string(count) + string(".xml");
+	string file1name = "LFDA-" + to_string(size) + filter + descriptor + database + to_string(nTraining) + string("l2") + to_string(count) + string(".xml");
+	string file2name = "LFDA-" + to_string(size) + filter + descriptor + database + to_string(nTraining) + string("cosine") + to_string(count) + string(".xml");
 	
 	FileStorage file1(file1name, FileStorage::WRITE);
 	FileStorage file2(file2name, FileStorage::WRITE);
-	FileStorage file3(file3name, FileStorage::WRITE);
 	
-	file1 << "distanceMatrix" << distancesChi;
-	file2 << "distanceMatrix" << distancesL2;
-	file3 << "distanceMatrix" << distancesCosine;
+	file1 << "distanceMatrix" << distancesL2;
+	file2 << "distanceMatrix" << distancesCosine;
 	
 	file1.release();
 	file2.release();
-	file3.release();
 	
 	return 0;
 }

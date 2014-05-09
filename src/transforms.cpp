@@ -45,7 +45,6 @@ inline void radonTransform_(InputArray _src, OutputArray _dst){
 	normalize(dst, dst, 0, 1, NORM_MINMAX, CV_32FC1);
 }
 
-
 void radonTransform(InputArray src, OutputArray dst) {
 	switch (src.type()) {
 		case CV_8SC1:   radonTransform_<char>(src, dst); break;
